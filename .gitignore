@@ -68,7 +68,8 @@ logs/
 *.log
 
 # Output files and reports
-/output/
+/output/*
+!output/README.md
 *.csv
 *.json
 summary.*
