@@ -224,7 +224,43 @@ Built with:
 
 ## Security Notes
 
-- SSH configuration files contain sensitive credentials and are excluded from version control
+### 🔐 Credential Security
+- SSH configuration files contain sensitive credentials and are **automatically excluded** from version control
 - Use secure file permissions: `chmod 600 servers.json`
-- Consider SSH key authentication for production use
-- Current implementation uses password authentication for simplicity
+- Never commit real passwords, server IPs, or SSH keys to git
+- Use the provided `servers.json.example` as a template
+
+### 🛡️ Production Security Recommendations
+- **Use SSH key authentication** instead of passwords in production
+- **Restrict network access** to log servers (VPN, firewall rules)
+- **Rotate credentials regularly** and use strong passwords
+- **Monitor access logs** for unauthorized usage
+- **Consider log aggregation systems** instead of direct server access
+
+### ⚠️ Development Security
+- Real server credentials in `servers.json` are excluded from git commits
+- Test connections are logged - avoid using production servers for testing
+- Downloaded log files may contain sensitive data - they are also excluded from git
+- Review `.gitignore` regularly to ensure all sensitive patterns are covered
+
+## Development Guidelines
+
+### 📋 Development Workflow (Mandatory)
+All contributors must follow these steps for every development session:
+
+1. **Documentation First**: Update README.md and relevant docs for new features
+2. **Security Review**: Check all changes for sensitive data before committing  
+3. **Development Log**: Update `.development_log.md` with session details
+4. **Testing**: Verify new features work and existing functionality remains intact
+5. **Git Workflow**: Stage, commit with descriptive message, and push to GitHub
+
+See `DEVELOPMENT_RULES.md` for comprehensive development standards and security practices.
+
+### 🔍 Security Checklist
+Before every commit, verify:
+- [ ] No real passwords, API keys, or tokens in any files
+- [ ] No SSH private keys or certificates committed
+- [ ] No real server IPs or sensitive hostnames
+- [ ] `.gitignore` updated for new sensitive file patterns  
+- [ ] Documentation updated with security warnings
+- [ ] Example files use placeholder values only
