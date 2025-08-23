@@ -45,3 +45,9 @@ Thumbs.db
 
 # Windows Zone.Identifier files
 *:Zone.Identifier
+
+# SSH configuration files (contain sensitive data)
+servers.json
+
+# Downloaded log files
+/downloads/

@@ -13,6 +13,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] Basic statistics: request counts, status code distribution, top IPs, top URLs
 - [x] Time range filtering
 - [x] Clean console output with formatting
+- [x] SSH remote log file download
 
 ### Phase 2 (Analytics) 🚧
 - [ ] Error pattern detection and analysis
@@ -43,8 +44,9 @@ go install github.com/dev-alt/smart-log-analyser@latest
 
 ## Quick Start
 
+### Local Analysis
 ```bash
-# Analyse a log file
+# Analyse a local log file
 ./smart-log-analyser analyse /var/log/nginx/access.log
 
 # Filter by time range
@@ -55,6 +57,24 @@ go install github.com/dev-alt/smart-log-analyser@latest
 
 # Test with sample data
 ./smart-log-analyser analyse testdata/sample_access.log
+```
+
+### Remote Server Access
+```bash
+# Create SSH configuration file
+./smart-log-analyser download --init
+
+# Test SSH connections
+./smart-log-analyser download --test
+
+# Download log files from all servers
+./smart-log-analyser download
+
+# Download from specific server
+./smart-log-analyser download --server your-server.com
+
+# Analyse downloaded files
+./smart-log-analyser analyse ./downloads/*.log
 ```
 
 ## Example Output
@@ -96,11 +116,14 @@ Currently supports standard Nginx access log formats:
 smart-log-analyser/
 ├── cmd/
 │   ├── root.go           # CLI root command
-│   └── analyse.go        # Analysis command
+│   ├── analyse.go        # Analysis command
+│   └── download.go       # Remote download command
 ├── pkg/
 │   ├── parser/           # Log parsing logic
-│   └── analyser/         # Analysis algorithms
+│   ├── analyser/         # Analysis algorithms
+│   └── remote/           # SSH client and configuration
 ├── testdata/             # Sample log files for testing
+├── servers.json.example  # Example SSH configuration
 ├── main.go               # Application entry point
 └── README.md             # This file
 ```
@@ -113,6 +136,39 @@ smart-log-analyser/
 - `--until`: End time for analysis (format: "YYYY-MM-DD HH:MM:SS")
 - `--top-ips`: Number of top IP addresses to display (default: 10)
 - `--top-urls`: Number of top URLs to display (default: 10)
+
+### `download` command
+
+- `--config`: Path to SSH configuration file (default: "servers.json")
+- `--server`: Specific server to download from (host name)
+- `--output`: Directory to save downloaded files (default: "./downloads")
+- `--test`: Test SSH connection without downloading
+- `--init`: Create a sample configuration file
+
+## SSH Configuration
+
+The SSH configuration is stored in JSON format. Create it with:
+
+```bash
+./smart-log-analyser download --init
+```
+
+Example `servers.json`:
+```json
+{
+  "servers": [
+    {
+      "host": "your-server.com",
+      "port": 22,
+      "username": "root",
+      "password": "your-password",
+      "log_path": "/var/log/nginx/access.log"
+    }
+  ]
+}
+```
+
+⚠️ **Security Note**: Store the configuration file securely and restrict permissions (`chmod 600 servers.json`).
 
 ## Development
 
@@ -133,6 +189,10 @@ go build -o smart-log-analyser
 # Test help commands
 ./smart-log-analyser --help
 ./smart-log-analyser analyse --help
+./smart-log-analyser download --help
+
+# Test SSH configuration creation
+./smart-log-analyser download --init
 ```
 
 ## Contributing
@@ -150,6 +210,7 @@ This project is licensed under the MIT License.
 ## Roadmap
 
 - **v0.1.0**: Basic log parsing and statistics ✅
+- **v0.1.1**: SSH remote log download ✅
 - **v0.2.0**: Advanced analytics and export features
 - **v0.3.0**: Real-time monitoring and alerting
 - **v1.0.0**: Production-ready with comprehensive documentation
@@ -158,4 +219,12 @@ This project is licensed under the MIT License.
 
 Built with:
 - [Cobra](https://github.com/spf13/cobra) - CLI framework
+- [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto) - SSH connectivity
 - Go standard library for log parsing and analysis
+
+## Security Notes
+
+- SSH configuration files contain sensitive credentials and are excluded from version control
+- Use secure file permissions: `chmod 600 servers.json`
+- Consider SSH key authentication for production use
+- Current implementation uses password authentication for simplicity
