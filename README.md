@@ -46,8 +46,14 @@ go install github.com/dev-alt/smart-log-analyser@latest
 
 ### Local Analysis
 ```bash
-# Analyse a local log file
+# Analyse a single log file
 ./smart-log-analyser analyse /var/log/nginx/access.log
+
+# Analyse multiple log files together
+./smart-log-analyser analyse /var/log/nginx/access.log /var/log/nginx/access.log.1
+
+# Analyse all downloaded files using wildcard
+./smart-log-analyser analyse ./downloads/*.log
 
 # Filter by time range
 ./smart-log-analyser analyse /var/log/nginx/access.log --since="2024-08-20 00:00:00" --until="2024-08-20 23:59:59"
@@ -89,27 +95,37 @@ go install github.com/dev-alt/smart-log-analyser@latest
 ## Example Output
 
 ```
+📂 Analysing 3 log file(s)...
+
+  [1/3] Processing: ./downloads/server1_20240823_access.log
+    ✅ Parsed 1247 entries
+  [2/3] Processing: ./downloads/server1_20240823_access.log.1
+    ✅ Parsed 2156 entries
+  [3/3] Processing: ./downloads/server1_20240823_access.log.2
+    ✅ Parsed 893 entries
+
+📊 Combined Analysis Results (4296 total entries):
 === Smart Log Analyser Results ===
 
-Total Requests: 10
-Date Range: 2024-08-22 10:15:30 to 2024-08-22 10:24:30
+Total Requests: 4296
+Date Range: 2024-08-22 10:15:30 to 2024-08-23 23:59:45
 
 === Status Code Distribution ===
-2xx Success: 7
-4xx Client Error: 2
-5xx Server Error: 1
+2xx Success: 3847
+4xx Client Error: 312
+5xx Server Error: 137
 
 === Top 10 IP Addresses ===
-192.168.1.100: 3 requests
-10.0.0.5: 3 requests
-203.0.113.1: 2 requests
-198.51.100.42: 2 requests
+192.168.1.100: 247 requests
+10.0.0.5: 198 requests
+203.0.113.1: 156 requests
+198.51.100.42: 143 requests
 
 === Top 10 URLs ===
-/index.html: 1 requests
-/api/login: 1 requests
-/about.html: 1 requests
-/products.html: 1 requests
+/index.html: 89 requests
+/api/status: 67 requests
+/assets/style.css: 54 requests
+/products.html: 43 requests
 ```
 
 ## Supported Log Formats
@@ -141,6 +157,11 @@ smart-log-analyser/
 
 ### `analyse` command
 
+**Usage**: `./smart-log-analyser analyse [log-files...]`
+
+Accepts one or more log files for analysis. When multiple files are provided, they are combined for comprehensive analysis.
+
+**Options**:
 - `--since`: Start time for analysis (format: "YYYY-MM-DD HH:MM:SS")
 - `--until`: End time for analysis (format: "YYYY-MM-DD HH:MM:SS")
 - `--top-ips`: Number of top IP addresses to display (default: 10)

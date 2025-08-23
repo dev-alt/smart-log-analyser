@@ -18,18 +18,35 @@ var (
 )
 
 var analyseCmd = &cobra.Command{
-	Use:   "analyse [log-file]",
+	Use:   "analyse [log-files...]",
 	Short: "Analyse Nginx access logs",
-	Long:  `Parse and analyse Nginx access logs to provide statistical insights.`,
-	Args:  cobra.ExactArgs(1),
+	Long:  `Parse and analyse Nginx access logs to provide statistical insights.
+Accepts multiple log files to analyse together.`,
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		logFile := args[0]
-		
 		p := parser.New()
-		logs, err := p.ParseFile(logFile)
-		if err != nil {
-			log.Fatalf("Failed to parse log file: %v", err)
+		var allLogs []*parser.LogEntry
+		
+		fmt.Printf("📂 Analysing %d log file(s)...\n\n", len(args))
+		
+		for i, logFile := range args {
+			fmt.Printf("  [%d/%d] Processing: %s\n", i+1, len(args), logFile)
+			
+			logs, err := p.ParseFile(logFile)
+			if err != nil {
+				fmt.Printf("    ❌ Failed to parse %s: %v\n", logFile, err)
+				continue
+			}
+			
+			fmt.Printf("    ✅ Parsed %d entries\n", len(logs))
+			allLogs = append(allLogs, logs...)
 		}
+		
+		if len(allLogs) == 0 {
+			log.Fatal("No valid log entries found in any files")
+		}
+		
+		fmt.Printf("\n📊 Combined Analysis Results (%d total entries):\n", len(allLogs))
 
 		var sinceTime, untilTime *time.Time
 		if since != "" {
@@ -48,7 +65,7 @@ var analyseCmd = &cobra.Command{
 		}
 
 		a := analyser.New()
-		results := a.Analyse(logs, sinceTime, untilTime)
+		results := a.Analyse(allLogs, sinceTime, untilTime)
 		
 		printResults(results)
 	},
