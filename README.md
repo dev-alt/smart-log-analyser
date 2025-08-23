@@ -14,8 +14,14 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] Time range filtering
 - [x] Clean console output with formatting
 - [x] SSH remote log file download
+- [x] Multi-file analysis support
 
-### Phase 2 (Analytics) 🚧
+### Phase 2 (Analytics) ✅
+- [x] Enhanced statistics with percentages and visual formatting
+- [x] HTTP method analysis (GET, POST, etc.)
+- [x] Data transfer analytics (total bytes, average response size)
+- [x] Unique visitor/resource counting
+- [x] Improved console output with emojis and structured display
 - [ ] Error pattern detection and analysis
 - [ ] Traffic analysis (requests per hour, peak detection)
 - [ ] Response time analysis and percentiles
@@ -105,27 +111,42 @@ go install github.com/dev-alt/smart-log-analyser@latest
     ✅ Parsed 893 entries
 
 📊 Combined Analysis Results (4296 total entries):
-=== Smart Log Analyser Results ===
+╔════════════════════════════════════════════════════════════════╗
+║                   Smart Log Analyser Results                  ║
+╚════════════════════════════════════════════════════════════════╝
 
-Total Requests: 4296
-Date Range: 2024-08-22 10:15:30 to 2024-08-23 23:59:45
+📊 Overview
+├─ Total Requests: 4,296
+├─ Unique IPs: 127
+├─ Unique URLs: 48
+├─ Data Transferred: 2.1 GB
+├─ Average Response Size: 512.3 KB
+└─ Date Range: 2024-08-22 10:15:30 to 2024-08-23 23:59:45
 
-=== Status Code Distribution ===
-2xx Success: 3847
-4xx Client Error: 312
-5xx Server Error: 137
+🔧 HTTP Methods
+├─ GET: 3,892 (90.6%)
+├─ POST: 347 (8.1%)
+├─ PUT: 42 (1.0%)
+├─ DELETE: 15 (0.3%)
 
-=== Top 10 IP Addresses ===
-192.168.1.100: 247 requests
-10.0.0.5: 198 requests
-203.0.113.1: 156 requests
-198.51.100.42: 143 requests
+📈 Status Code Distribution
+├─ 2xx Success: 3,847 (89.5%)
+├─ 4xx Client Error: 312 (7.3%)
+├─ 5xx Server Error: 137 (3.2%)
 
-=== Top 10 URLs ===
-/index.html: 89 requests
-/api/status: 67 requests
-/assets/style.css: 54 requests
-/products.html: 43 requests
+🌐 Top 5 IP Addresses
+├─ 192.168.1.100: 247 requests (5.7%)
+├─ 10.0.0.5: 198 requests (4.6%)
+├─ 203.0.113.1: 156 requests (3.6%)
+├─ 198.51.100.42: 143 requests (3.3%)
+├─ 172.16.0.15: 98 requests (2.3%)
+
+🔗 Top 5 URLs
+├─ /index.html: 89 requests (2.1%)
+├─ /api/status: 67 requests (1.6%)
+├─ /assets/style.css: 54 requests (1.3%)
+├─ /products.html: 43 requests (1.0%)
+├─ /about.html: 38 requests (0.9%)
 ```
 
 ## Supported Log Formats

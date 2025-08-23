@@ -79,34 +79,103 @@ func init() {
 }
 
 func printResults(results *analyser.Results) {
-	fmt.Printf("=== Smart Log Analyser Results ===\n\n")
-	fmt.Printf("Total Requests: %d\n", results.TotalRequests)
-	fmt.Printf("Date Range: %s to %s\n\n", 
+	fmt.Printf("╔════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                   Smart Log Analyser Results                  ║\n") 
+	fmt.Printf("╚════════════════════════════════════════════════════════════════╝\n\n")
+	
+	// Overview Statistics
+	fmt.Printf("📊 Overview\n")
+	fmt.Printf("├─ Total Requests: %s\n", formatNumber(results.TotalRequests))
+	fmt.Printf("├─ Unique IPs: %s\n", formatNumber(results.UniqueIPs))
+	fmt.Printf("├─ Unique URLs: %s\n", formatNumber(results.UniqueURLs))
+	fmt.Printf("├─ Data Transferred: %s\n", formatBytes(results.TotalBytes))
+	fmt.Printf("├─ Average Response Size: %s\n", formatBytes(results.AverageSize))
+	fmt.Printf("└─ Date Range: %s to %s\n\n", 
 		results.TimeRange.Start.Format("2006-01-02 15:04:05"),
 		results.TimeRange.End.Format("2006-01-02 15:04:05"))
 
-	fmt.Printf("=== Status Code Distribution ===\n")
-	for status, count := range results.StatusCodes {
-		fmt.Printf("%s: %d\n", status, count)
+	// HTTP Methods
+	if len(results.HTTPMethods) > 0 {
+		fmt.Printf("🔧 HTTP Methods\n")
+		for _, method := range results.HTTPMethods {
+			percentage := float64(method.Count) / float64(results.TotalRequests) * 100
+			fmt.Printf("├─ %s: %s (%.1f%%)\n", method.Method, formatNumber(method.Count), percentage)
+		}
+		fmt.Println()
 	}
 
-	fmt.Printf("\n=== Top %d IP Addresses ===\n", topIPs)
+	// Status Code Distribution
+	fmt.Printf("📈 Status Code Distribution\n")
+	statusOrder := []string{"2xx Success", "3xx Redirect", "4xx Client Error", "5xx Server Error", "1xx Informational"}
+	for _, status := range statusOrder {
+		if count, exists := results.StatusCodes[status]; exists {
+			percentage := float64(count) / float64(results.TotalRequests) * 100
+			fmt.Printf("├─ %s: %s (%.1f%%)\n", status, formatNumber(count), percentage)
+		}
+	}
+	fmt.Println()
+
+	// Top IPs
+	fmt.Printf("🌐 Top %d IP Addresses\n", topIPs)
 	count := 0
 	for _, ip := range results.TopIPs {
 		if count >= topIPs {
 			break
 		}
-		fmt.Printf("%s: %d requests\n", ip.IP, ip.Count)
+		percentage := float64(ip.Count) / float64(results.TotalRequests) * 100
+		fmt.Printf("├─ %s: %s requests (%.1f%%)\n", ip.IP, formatNumber(ip.Count), percentage)
 		count++
 	}
+	fmt.Println()
 
-	fmt.Printf("\n=== Top %d URLs ===\n", topURLs)
+	// Top URLs
+	fmt.Printf("🔗 Top %d URLs\n", topURLs)
 	count = 0
 	for _, url := range results.TopURLs {
 		if count >= topURLs {
 			break
 		}
-		fmt.Printf("%s: %d requests\n", url.URL, url.Count)
+		percentage := float64(url.Count) / float64(results.TotalRequests) * 100
+		// Truncate long URLs for display
+		displayURL := url.URL
+		if len(displayURL) > 60 {
+			displayURL = displayURL[:57] + "..."
+		}
+		fmt.Printf("├─ %s: %s requests (%.1f%%)\n", displayURL, formatNumber(url.Count), percentage)
 		count++
 	}
+	fmt.Println()
+}
+
+// Helper function to format numbers with commas
+func formatNumber(num int) string {
+	str := fmt.Sprintf("%d", num)
+	if len(str) <= 3 {
+		return str
+	}
+	
+	result := ""
+	for i, char := range str {
+		if i > 0 && (len(str)-i)%3 == 0 {
+			result += ","
+		}
+		result += string(char)
+	}
+	return result
+}
+
+// Helper function to format bytes in human-readable format
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }

@@ -22,12 +22,22 @@ type TimeRange struct {
 	End   time.Time
 }
 
+type MethodStat struct {
+	Method string
+	Count  int
+}
+
 type Results struct {
 	TotalRequests int
 	TimeRange     TimeRange
 	StatusCodes   map[string]int
 	TopIPs        []IPStat
 	TopURLs       []URLStat
+	HTTPMethods   []MethodStat
+	TotalBytes    int64
+	AverageSize   int64
+	UniqueIPs     int
+	UniqueURLs    int
 }
 
 type Analyser struct{}
@@ -46,6 +56,11 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 			StatusCodes:   make(map[string]int),
 			TopIPs:        []IPStat{},
 			TopURLs:       []URLStat{},
+			HTTPMethods:   []MethodStat{},
+			TotalBytes:    0,
+			AverageSize:   0,
+			UniqueIPs:     0,
+			UniqueURLs:    0,
 		}
 	}
 
@@ -55,6 +70,11 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 		StatusCodes:   a.analyseStatusCodes(filtered),
 		TopIPs:        a.analyseTopIPs(filtered),
 		TopURLs:       a.analyseTopURLs(filtered),
+		HTTPMethods:   a.analyseHTTPMethods(filtered),
+		TotalBytes:    a.calculateTotalBytes(filtered),
+		AverageSize:   a.calculateAverageSize(filtered),
+		UniqueIPs:     a.countUniqueIPs(filtered),
+		UniqueURLs:    a.countUniqueURLs(filtered),
 	}
 
 	return results
@@ -143,6 +163,56 @@ func (a *Analyser) analyseTopURLs(logs []*parser.LogEntry) []URLStat {
 	})
 
 	return urlStats
+}
+
+func (a *Analyser) analyseHTTPMethods(logs []*parser.LogEntry) []MethodStat {
+	methodCounts := make(map[string]int)
+
+	for _, log := range logs {
+		methodCounts[log.Method]++
+	}
+
+	var methodStats []MethodStat
+	for method, count := range methodCounts {
+		methodStats = append(methodStats, MethodStat{Method: method, Count: count})
+	}
+
+	sort.Slice(methodStats, func(i, j int) bool {
+		return methodStats[i].Count > methodStats[j].Count
+	})
+
+	return methodStats
+}
+
+func (a *Analyser) calculateTotalBytes(logs []*parser.LogEntry) int64 {
+	var total int64
+	for _, log := range logs {
+		total += log.Size
+	}
+	return total
+}
+
+func (a *Analyser) calculateAverageSize(logs []*parser.LogEntry) int64 {
+	if len(logs) == 0 {
+		return 0
+	}
+	return a.calculateTotalBytes(logs) / int64(len(logs))
+}
+
+func (a *Analyser) countUniqueIPs(logs []*parser.LogEntry) int {
+	unique := make(map[string]bool)
+	for _, log := range logs {
+		unique[log.IP] = true
+	}
+	return len(unique)
+}
+
+func (a *Analyser) countUniqueURLs(logs []*parser.LogEntry) int {
+	unique := make(map[string]bool)
+	for _, log := range logs {
+		unique[log.URL] = true
+	}
+	return len(unique)
 }
 
 func getStatusClass(status int) string {
