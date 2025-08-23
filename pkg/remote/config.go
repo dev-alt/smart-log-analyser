@@ -50,6 +50,11 @@ func LoadConfig(filename string) (*Config, error) {
 }
 
 func CreateSampleConfig(filename string) error {
+	// Check if config file already exists
+	if _, err := os.Stat(filename); err == nil {
+		return fmt.Errorf("configuration file '%s' already exists - will not overwrite", filename)
+	}
+
 	config := Config{
 		Servers: []SSHConfig{
 			{

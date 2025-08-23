@@ -61,7 +61,7 @@ go install github.com/dev-alt/smart-log-analyser@latest
 
 ### Remote Server Access
 ```bash
-# Create SSH configuration file
+# Create SSH configuration file (only if doesn't exist)
 ./smart-log-analyser download --init
 
 # Test SSH connections
@@ -143,15 +143,21 @@ smart-log-analyser/
 - `--server`: Specific server to download from (host name)
 - `--output`: Directory to save downloaded files (default: "./downloads")
 - `--test`: Test SSH connection without downloading
-- `--init`: Create a sample configuration file
+- `--init`: Create a sample configuration file (will not overwrite existing files)
 
 ## SSH Configuration
 
 The SSH configuration is stored in JSON format. Create it with:
 
 ```bash
+# Creates servers.json only if it doesn't exist
 ./smart-log-analyser download --init
+
+# Create with different filename
+./smart-log-analyser download --init --config my-servers.json
 ```
+
+**Note**: The `--init` command will **not overwrite** existing configuration files. If a file already exists, it will display the current configuration instead.
 
 Example `servers.json`:
 ```json

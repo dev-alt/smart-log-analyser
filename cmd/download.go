@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -49,6 +50,28 @@ func init() {
 
 func handleCreateConfig() {
 	if err := remote.CreateSampleConfig(configFile); err != nil {
+		// Check if it's because file already exists
+		if strings.Contains(err.Error(), "already exists") {
+			fmt.Printf("Configuration file '%s' already exists.\n", configFile)
+			fmt.Println("Use --config flag to specify a different filename if needed.")
+			fmt.Println("\nCurrent configuration:")
+			
+			// Try to load and display current config (safely)
+			if config, loadErr := remote.LoadConfig(configFile); loadErr == nil {
+				fmt.Printf("  - %d server(s) configured\n", len(config.Servers))
+				for i, server := range config.Servers {
+					fmt.Printf("  - Server %d: %s@%s:%d\n", i+1, server.Username, server.Host, server.Port)
+				}
+			}
+			
+			fmt.Println("\nExample usage:")
+			fmt.Println("  # Test existing configuration")
+			fmt.Println("  smart-log-analyser download --test")
+			fmt.Println("  # Download logs with existing configuration")
+			fmt.Println("  smart-log-analyser download")
+			return
+		}
+		
 		log.Fatalf("Failed to create config file: %v", err)
 	}
 	
