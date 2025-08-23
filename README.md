@@ -28,7 +28,8 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Export functionality** (JSON and CSV formats with detailed breakdowns)
 - [x] **Detailed drill-down analysis** (individual status codes, error URLs, large requests)
 - [x] **Error pattern detection** (4xx/5xx URLs, failure analysis)
-- [ ] Traffic analysis (requests per hour, peak detection)
+- [x] **Traffic pattern analysis** (hourly breakdowns, peak detection, visual charts)
+- [x] **Peak traffic detection** (automatic identification of traffic spikes)
 - [ ] Response time analysis and percentiles
 - [ ] Geographic IP analysis
 
@@ -79,6 +80,9 @@ go install github.com/dev-alt/smart-log-analyser@latest
 
 # Export results for further analysis
 ./smart-log-analyser analyse ./downloads/*.log --export-json=detailed_report.json --export-csv=summary.csv
+
+# Analyze traffic patterns and identify peak hours
+./smart-log-analyser analyse /var/log/nginx/access.log* --details
 ```
 
 ### Remote Server Access
@@ -150,6 +154,25 @@ go install github.com/dev-alt/smart-log-analyser@latest
 ├─ JavaScript: 398 requests (9.3%) - 124.7 MB total, 320.8 KB avg
 ├─ Images: 287 requests (6.7%) - 67.8 MB total, 241.7 KB avg
 ├─ Fonts: 89 requests (2.1%) - 15.2 MB total, 174.9 KB avg
+
+📈 Traffic Patterns
+├─ Average Requests/Hour: 179.0
+├─ Peak Hour: 14:00 (Afternoon)  
+├─ Quietest Hour: 03:00 (Night)
+└─ Hourly Breakdown:
+   ├─ 08:00: 98 requests (2.3%) [█░░░░░░░░░░░░░░░░░░░]
+   ├─ 09:00: 156 requests (3.6%) [███░░░░░░░░░░░░░░░░░]
+   ├─ 10:00: 234 requests (5.4%) [█████░░░░░░░░░░░░░░░]
+   ├─ 11:00: 298 requests (6.9%) [██████░░░░░░░░░░░░░░]
+   ├─ 12:00: 432 requests (10.1%) [██████████░░░░░░░░░░]
+   ├─ 13:00: 578 requests (13.5%) [█████████████░░░░░░░]
+   ├─ 14:00: 892 requests (20.8%) [████████████████████] ← Peak
+   ├─ 15:00: 567 requests (13.2%) [█████████████░░░░░░░]
+   ├─ 16:00: 341 requests (7.9%) [███████░░░░░░░░░░░░░]
+
+🔥 Traffic Peaks Detected
+├─ Peak #1: 2024-08-22 14:00 - 892 requests (1 hour)
+├─ Peak #2: 2024-08-22 13:00 - 578 requests (1 hour)
 
 🔧 HTTP Methods
 ├─ GET: 3,892 (90.6%)

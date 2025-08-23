@@ -39,29 +39,46 @@ type FileTypeStat struct {
 	Size     int64
 }
 
+type HourlyTraffic struct {
+	Hour         int    // Hour of day (0-23)
+	RequestCount int    // Number of requests in that hour
+	Timestamp    string // Human readable timestamp for the hour
+}
+
+type TrafficPeak struct {
+	Time         string // Timestamp of peak
+	RequestCount int    // Number of requests during peak period
+	Duration     string // Peak duration description
+}
+
 type DetailedStatusCode struct {
 	Code  int
 	Count int
 }
 
 type Results struct {
-	TotalRequests       int
-	TimeRange           TimeRange
-	StatusCodes         map[string]int
-	DetailedStatusCodes []DetailedStatusCode
-	TopIPs              []IPStat
-	TopURLs             []URLStat
-	HTTPMethods         []MethodStat
-	TotalBytes          int64
-	AverageSize         int64
-	UniqueIPs           int
-	UniqueURLs          int
-	BotRequests         int
-	HumanRequests       int
-	TopBots             []BotStat
-	FileTypes           []FileTypeStat
-	ErrorURLs           []URLStat // URLs that generated errors
-	LargeRequests       []URLStat // Largest requests by size
+	TotalRequests          int
+	TimeRange              TimeRange
+	StatusCodes            map[string]int
+	DetailedStatusCodes    []DetailedStatusCode
+	TopIPs                 []IPStat
+	TopURLs                []URLStat
+	HTTPMethods            []MethodStat
+	TotalBytes             int64
+	AverageSize            int64
+	UniqueIPs              int
+	UniqueURLs             int
+	BotRequests            int
+	HumanRequests          int
+	TopBots                []BotStat
+	FileTypes              []FileTypeStat
+	ErrorURLs              []URLStat // URLs that generated errors
+	LargeRequests          []URLStat // Largest requests by size
+	HourlyTraffic          []HourlyTraffic
+	TrafficPeaks           []TrafficPeak
+	AverageRequestsPerHour float64
+	PeakHour               int
+	QuietestHour           int
 }
 
 type Analyser struct{}
@@ -75,46 +92,59 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 	
 	if len(filtered) == 0 {
 		return &Results{
-			TotalRequests:       0,
-			TimeRange:           TimeRange{},
-			StatusCodes:         make(map[string]int),
-			DetailedStatusCodes: []DetailedStatusCode{},
-			TopIPs:              []IPStat{},
-			TopURLs:             []URLStat{},
-			HTTPMethods:         []MethodStat{},
-			TotalBytes:          0,
-			AverageSize:         0,
-			UniqueIPs:           0,
-			UniqueURLs:          0,
-			BotRequests:         0,
-			HumanRequests:       0,
-			TopBots:             []BotStat{},
-			FileTypes:           []FileTypeStat{},
-			ErrorURLs:           []URLStat{},
-			LargeRequests:       []URLStat{},
+			TotalRequests:          0,
+			TimeRange:              TimeRange{},
+			StatusCodes:            make(map[string]int),
+			DetailedStatusCodes:    []DetailedStatusCode{},
+			TopIPs:                 []IPStat{},
+			TopURLs:                []URLStat{},
+			HTTPMethods:            []MethodStat{},
+			TotalBytes:             0,
+			AverageSize:            0,
+			UniqueIPs:              0,
+			UniqueURLs:             0,
+			BotRequests:            0,
+			HumanRequests:          0,
+			TopBots:                []BotStat{},
+			FileTypes:              []FileTypeStat{},
+			ErrorURLs:              []URLStat{},
+			LargeRequests:          []URLStat{},
+			HourlyTraffic:          []HourlyTraffic{},
+			TrafficPeaks:           []TrafficPeak{},
+			AverageRequestsPerHour: 0,
+			PeakHour:               -1,
+			QuietestHour:           -1,
 		}
 	}
 
 	botRequests, humanRequests := a.analyseBotTraffic(filtered)
+	hourlyTraffic := a.analyseHourlyTraffic(filtered)
+	trafficPeaks := a.detectTrafficPeaks(hourlyTraffic)
+	avgPerHour, peakHour, quietestHour := a.calculateTrafficStats(hourlyTraffic)
 	
 	results := &Results{
-		TotalRequests:       len(filtered),
-		TimeRange:           a.calculateTimeRange(filtered),
-		StatusCodes:         a.analyseStatusCodes(filtered),
-		DetailedStatusCodes: a.analyseDetailedStatusCodes(filtered),
-		TopIPs:              a.analyseTopIPs(filtered),
-		TopURLs:             a.analyseTopURLs(filtered),
-		HTTPMethods:         a.analyseHTTPMethods(filtered),
-		TotalBytes:          a.calculateTotalBytes(filtered),
-		AverageSize:         a.calculateAverageSize(filtered),
-		UniqueIPs:           a.countUniqueIPs(filtered),
-		UniqueURLs:          a.countUniqueURLs(filtered),
-		BotRequests:         botRequests,
-		HumanRequests:       humanRequests,
-		TopBots:             a.analyseTopBots(filtered),
-		FileTypes:           a.analyseFileTypes(filtered),
-		ErrorURLs:           a.analyseErrorURLs(filtered),
-		LargeRequests:       a.analyseLargeRequests(filtered),
+		TotalRequests:          len(filtered),
+		TimeRange:              a.calculateTimeRange(filtered),
+		StatusCodes:            a.analyseStatusCodes(filtered),
+		DetailedStatusCodes:    a.analyseDetailedStatusCodes(filtered),
+		TopIPs:                 a.analyseTopIPs(filtered),
+		TopURLs:                a.analyseTopURLs(filtered),
+		HTTPMethods:            a.analyseHTTPMethods(filtered),
+		TotalBytes:             a.calculateTotalBytes(filtered),
+		AverageSize:            a.calculateAverageSize(filtered),
+		UniqueIPs:              a.countUniqueIPs(filtered),
+		UniqueURLs:             a.countUniqueURLs(filtered),
+		BotRequests:            botRequests,
+		HumanRequests:          humanRequests,
+		TopBots:                a.analyseTopBots(filtered),
+		FileTypes:              a.analyseFileTypes(filtered),
+		ErrorURLs:              a.analyseErrorURLs(filtered),
+		LargeRequests:          a.analyseLargeRequests(filtered),
+		HourlyTraffic:          hourlyTraffic,
+		TrafficPeaks:           trafficPeaks,
+		AverageRequestsPerHour: avgPerHour,
+		PeakHour:               peakHour,
+		QuietestHour:           quietestHour,
 	}
 
 	return results
@@ -487,6 +517,127 @@ func (a *Analyser) analyseLargeRequests(logs []*parser.LogEntry) []URLStat {
 	}
 	
 	return largeStats
+}
+
+func (a *Analyser) analyseHourlyTraffic(logs []*parser.LogEntry) []HourlyTraffic {
+	if len(logs) == 0 {
+		return []HourlyTraffic{}
+	}
+	
+	// Count requests per hour
+	hourlyCounts := make(map[int]int)
+	hourTimestamps := make(map[int]string)
+	
+	for _, log := range logs {
+		hour := log.Timestamp.Hour()
+		hourlyCounts[hour]++
+		
+		// Store a representative timestamp for this hour (first occurrence)
+		if _, exists := hourTimestamps[hour]; !exists {
+			hourTimestamps[hour] = log.Timestamp.Format("2006-01-02 15:00")
+		}
+	}
+	
+	// Convert to slice and sort by hour
+	var hourlyTraffic []HourlyTraffic
+	for hour, count := range hourlyCounts {
+		hourlyTraffic = append(hourlyTraffic, HourlyTraffic{
+			Hour:         hour,
+			RequestCount: count,
+			Timestamp:    hourTimestamps[hour],
+		})
+	}
+	
+	sort.Slice(hourlyTraffic, func(i, j int) bool {
+		return hourlyTraffic[i].Hour < hourlyTraffic[j].Hour
+	})
+	
+	return hourlyTraffic
+}
+
+func (a *Analyser) detectTrafficPeaks(hourlyTraffic []HourlyTraffic) []TrafficPeak {
+	if len(hourlyTraffic) < 3 {
+		return []TrafficPeak{}
+	}
+	
+	var peaks []TrafficPeak
+	
+	// Calculate average requests per hour
+	totalRequests := 0
+	for _, traffic := range hourlyTraffic {
+		totalRequests += traffic.RequestCount
+	}
+	avgRequestsPerHour := float64(totalRequests) / float64(len(hourlyTraffic))
+	
+	// Define peak threshold as 150% of average
+	peakThreshold := avgRequestsPerHour * 1.5
+	
+	for i, traffic := range hourlyTraffic {
+		if float64(traffic.RequestCount) > peakThreshold {
+			// Check if this is a local maximum
+			isPeak := true
+			
+			// Check previous hour
+			if i > 0 && hourlyTraffic[i-1].RequestCount >= traffic.RequestCount {
+				isPeak = false
+			}
+			
+			// Check next hour
+			if i < len(hourlyTraffic)-1 && hourlyTraffic[i+1].RequestCount >= traffic.RequestCount {
+				isPeak = false
+			}
+			
+			if isPeak {
+				peaks = append(peaks, TrafficPeak{
+					Time:         traffic.Timestamp,
+					RequestCount: traffic.RequestCount,
+					Duration:     "1 hour", // For now, consider each peak as 1 hour
+				})
+			}
+		}
+	}
+	
+	// Sort peaks by request count (highest first)
+	sort.Slice(peaks, func(i, j int) bool {
+		return peaks[i].RequestCount > peaks[j].RequestCount
+	})
+	
+	// Limit to top 5 peaks
+	if len(peaks) > 5 {
+		peaks = peaks[:5]
+	}
+	
+	return peaks
+}
+
+func (a *Analyser) calculateTrafficStats(hourlyTraffic []HourlyTraffic) (float64, int, int) {
+	if len(hourlyTraffic) == 0 {
+		return 0, -1, -1
+	}
+	
+	totalRequests := 0
+	peakHour := -1
+	quietestHour := -1
+	maxRequests := -1
+	minRequests := int(^uint(0) >> 1) // Max int value
+	
+	for _, traffic := range hourlyTraffic {
+		totalRequests += traffic.RequestCount
+		
+		if traffic.RequestCount > maxRequests {
+			maxRequests = traffic.RequestCount
+			peakHour = traffic.Hour
+		}
+		
+		if traffic.RequestCount < minRequests {
+			minRequests = traffic.RequestCount
+			quietestHour = traffic.Hour
+		}
+	}
+	
+	avgRequestsPerHour := float64(totalRequests) / float64(len(hourlyTraffic))
+	
+	return avgRequestsPerHour, peakHour, quietestHour
 }
 
 func getStatusClass(status int) string {

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -164,6 +165,38 @@ func printResults(results *analyser.Results) {
 		fmt.Println()
 	}
 
+	// Traffic Pattern Analysis
+	if len(results.HourlyTraffic) > 0 {
+		fmt.Printf("📈 Traffic Patterns\n")
+		fmt.Printf("├─ Average Requests/Hour: %.1f\n", results.AverageRequestsPerHour)
+		if results.PeakHour >= 0 {
+			fmt.Printf("├─ Peak Hour: %02d:00 (%s)\n", results.PeakHour, getHourName(results.PeakHour))
+		}
+		if results.QuietestHour >= 0 {
+			fmt.Printf("├─ Quietest Hour: %02d:00 (%s)\n", results.QuietestHour, getHourName(results.QuietestHour))
+		}
+		
+		// Show hourly breakdown
+		fmt.Printf("└─ Hourly Breakdown:\n")
+		for _, hour := range results.HourlyTraffic {
+			percentage := float64(hour.RequestCount) / float64(results.TotalRequests) * 100
+			bar := createSimpleBar(percentage, 20)
+			fmt.Printf("   ├─ %02d:00: %s requests (%.1f%%) %s\n", 
+				hour.Hour, formatNumber(hour.RequestCount), percentage, bar)
+		}
+		fmt.Println()
+	}
+
+	// Traffic Peaks (only show if there are peaks and details requested)
+	if showDetails && len(results.TrafficPeaks) > 0 {
+		fmt.Printf("🔥 Traffic Peaks Detected\n")
+		for i, peak := range results.TrafficPeaks {
+			fmt.Printf("├─ Peak #%d: %s - %s requests (%s)\n", 
+				i+1, peak.Time, formatNumber(peak.RequestCount), peak.Duration)
+		}
+		fmt.Println()
+	}
+
 	// HTTP Methods
 	if len(results.HTTPMethods) > 0 {
 		fmt.Printf("🔧 HTTP Methods\n")
@@ -287,6 +320,40 @@ func formatBytes(bytes int64) string {
 	}
 	
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// Helper function to get hour name
+func getHourName(hour int) string {
+	switch {
+	case hour >= 6 && hour < 12:
+		return "Morning"
+	case hour >= 12 && hour < 18:
+		return "Afternoon"
+	case hour >= 18 && hour < 22:
+		return "Evening"
+	default:
+		return "Night"
+	}
+}
+
+// Helper function to create a simple text-based bar chart
+func createSimpleBar(percentage float64, maxWidth int) string {
+	if percentage <= 0 {
+		return ""
+	}
+	
+	width := int(percentage / 100.0 * float64(maxWidth))
+	if width == 0 && percentage > 0 {
+		width = 1 // Ensure at least one character for non-zero values
+	}
+	
+	bar := strings.Repeat("█", width)
+	remaining := maxWidth - width
+	if remaining > 0 {
+		bar += strings.Repeat("░", remaining)
+	}
+	
+	return fmt.Sprintf("[%s]", bar)
 }
 
 func exportToJSON(results *analyser.Results, filename string) error {
