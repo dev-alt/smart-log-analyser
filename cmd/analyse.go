@@ -12,16 +12,19 @@ import (
 
 	"github.com/spf13/cobra"
 	"smart-log-analyser/pkg/analyser"
+	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
 )
 
 var (
-	since      string
-	until      string
-	topIPs     int
-	topURLs    int
-	exportJSON string
-	exportCSV  string
+	since       string
+	until       string
+	topIPs      int
+	topURLs     int
+	exportJSON  string
+	exportCSV   string
+	exportHTML  string
+	htmlTitle   string
 	showDetails bool
 )
 
@@ -92,6 +95,18 @@ Accepts multiple log files to analyse together.`,
 			}
 		}
 		
+		if exportHTML != "" {
+			title := htmlTitle
+			if title == "" {
+				title = "Log Analysis Report"
+			}
+			if err := exportToHTML(results, exportHTML, title); err != nil {
+				fmt.Printf("❌ Failed to export HTML: %v\n", err)
+			} else {
+				fmt.Printf("🌐 Exported HTML report to: %s\n", exportHTML)
+			}
+		}
+		
 		printResults(results)
 	},
 }
@@ -103,6 +118,8 @@ func init() {
 	analyseCmd.Flags().IntVar(&topURLs, "top-urls", 10, "Number of top URLs to show")
 	analyseCmd.Flags().StringVar(&exportJSON, "export-json", "", "Export detailed results to JSON file")
 	analyseCmd.Flags().StringVar(&exportCSV, "export-csv", "", "Export detailed results to CSV file")
+	analyseCmd.Flags().StringVar(&exportHTML, "export-html", "", "Export interactive HTML report")
+	analyseCmd.Flags().StringVar(&htmlTitle, "html-title", "", "Custom title for HTML report")
 	analyseCmd.Flags().BoolVar(&showDetails, "details", false, "Show detailed breakdown (individual status codes, etc.)")
 }
 
@@ -635,4 +652,14 @@ func getThreatEmoji(threatLevel string) string {
 	default:
 		return "🔐"
 	}
+}
+
+// exportToHTML generates an interactive HTML report
+func exportToHTML(results *analyser.Results, filename string, title string) error {
+	generator, err := html.NewGenerator()
+	if err != nil {
+		return fmt.Errorf("failed to create HTML generator: %w", err)
+	}
+	
+	return generator.GenerateReport(results, filename, title)
 }

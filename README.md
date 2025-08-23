@@ -35,10 +35,10 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Advanced security analysis** (attack pattern detection, anomaly detection, threat scoring)
 - [x] **Compressed file support** (automatic .gz decompression, rotated log files)
 
-### Phase 3 (Advanced Analytics) 📋
+### Phase 3 (Advanced Analytics) 🚀
+- [x] **HTML report generation with embedded charts** (Interactive reports with Chart.js visualizations)
 - [ ] Historical trend analysis (compare periods, track degradation)
 - [ ] ASCII charts and terminal visualizations
-- [ ] HTML report generation with embedded charts
 - [ ] Advanced query language for complex filtering
 - [ ] Database integration (SQLite, PostgreSQL export)
 - [ ] Plugin architecture for custom analyzers
@@ -109,6 +109,12 @@ smart-log-analyser/
 # Export results for further analysis (files saved to output/ folder)
 ./smart-log-analyser analyse ./downloads/*.log --export-json=output/detailed_report.json --export-csv=output/summary.csv
 
+# Generate interactive HTML report with charts and visualizations
+./smart-log-analyser analyse ./downloads/*.log --export-html=output/report.html --html-title="Production Server Analysis"
+
+# Generate multiple export formats simultaneously
+./smart-log-analyser analyse ./downloads/*.log --export-html=output/report.html --export-json=output/data.json --export-csv=output/summary.csv --details
+
 # Analyze traffic patterns and identify peak hours
 ./smart-log-analyser analyse /var/log/nginx/access.log* --details
 ```
@@ -138,6 +144,49 @@ smart-log-analyser/
 
 # Analyse downloaded files
 ./smart-log-analyser analyse ./downloads/*.log
+```
+
+## HTML Reports 📊
+
+The Smart Log Analyser can generate beautiful, interactive HTML reports with embedded charts and visualizations.
+
+### Features
+- **Interactive Charts**: Powered by Chart.js with responsive design
+- **Professional Layout**: Clean, modern interface with Bootstrap CSS
+- **Comprehensive Analysis**: All analytics displayed with visual charts
+- **Mobile Friendly**: Responsive design works on all devices
+- **Print Ready**: Optimized styling for PDF generation
+
+### Chart Types
+- **Traffic Analysis**: Pie charts for human vs bot traffic
+- **Status Code Distribution**: Doughnut charts for response codes
+- **Hourly Traffic Patterns**: Line charts showing traffic over time
+- **Response Size Analysis**: Bar charts for response time proxies
+- **Geographic Distribution**: Bar charts for traffic by region
+- **File Type Analysis**: Stacked bar charts for content types
+
+### HTML Report Generation
+```bash
+# Basic HTML report
+./smart-log-analyser analyse logs/ --export-html=output/report.html
+
+# Custom title and detailed analysis
+./smart-log-analyser analyse logs/ --export-html=output/report.html --html-title="Production Analysis" --details
+
+# Multiple formats with HTML report
+./smart-log-analyser analyse logs/ --export-html=output/report.html --export-json=output/data.json --details
+```
+
+### Opening HTML Reports
+```bash
+# Open in default browser (Linux)
+xdg-open output/report.html
+
+# Open in default browser (macOS)
+open output/report.html
+
+# Open in default browser (Windows)
+start output/report.html
 ```
 
 ## Example Output
