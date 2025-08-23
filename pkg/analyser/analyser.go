@@ -39,21 +39,29 @@ type FileTypeStat struct {
 	Size     int64
 }
 
+type DetailedStatusCode struct {
+	Code  int
+	Count int
+}
+
 type Results struct {
-	TotalRequests int
-	TimeRange     TimeRange
-	StatusCodes   map[string]int
-	TopIPs        []IPStat
-	TopURLs       []URLStat
-	HTTPMethods   []MethodStat
-	TotalBytes    int64
-	AverageSize   int64
-	UniqueIPs     int
-	UniqueURLs    int
-	BotRequests   int
-	HumanRequests int
-	TopBots       []BotStat
-	FileTypes     []FileTypeStat
+	TotalRequests       int
+	TimeRange           TimeRange
+	StatusCodes         map[string]int
+	DetailedStatusCodes []DetailedStatusCode
+	TopIPs              []IPStat
+	TopURLs             []URLStat
+	HTTPMethods         []MethodStat
+	TotalBytes          int64
+	AverageSize         int64
+	UniqueIPs           int
+	UniqueURLs          int
+	BotRequests         int
+	HumanRequests       int
+	TopBots             []BotStat
+	FileTypes           []FileTypeStat
+	ErrorURLs           []URLStat // URLs that generated errors
+	LargeRequests       []URLStat // Largest requests by size
 }
 
 type Analyser struct{}
@@ -67,40 +75,46 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 	
 	if len(filtered) == 0 {
 		return &Results{
-			TotalRequests: 0,
-			TimeRange:     TimeRange{},
-			StatusCodes:   make(map[string]int),
-			TopIPs:        []IPStat{},
-			TopURLs:       []URLStat{},
-			HTTPMethods:   []MethodStat{},
-			TotalBytes:    0,
-			AverageSize:   0,
-			UniqueIPs:     0,
-			UniqueURLs:    0,
-			BotRequests:   0,
-			HumanRequests: 0,
-			TopBots:       []BotStat{},
-			FileTypes:     []FileTypeStat{},
+			TotalRequests:       0,
+			TimeRange:           TimeRange{},
+			StatusCodes:         make(map[string]int),
+			DetailedStatusCodes: []DetailedStatusCode{},
+			TopIPs:              []IPStat{},
+			TopURLs:             []URLStat{},
+			HTTPMethods:         []MethodStat{},
+			TotalBytes:          0,
+			AverageSize:         0,
+			UniqueIPs:           0,
+			UniqueURLs:          0,
+			BotRequests:         0,
+			HumanRequests:       0,
+			TopBots:             []BotStat{},
+			FileTypes:           []FileTypeStat{},
+			ErrorURLs:           []URLStat{},
+			LargeRequests:       []URLStat{},
 		}
 	}
 
 	botRequests, humanRequests := a.analyseBotTraffic(filtered)
 	
 	results := &Results{
-		TotalRequests: len(filtered),
-		TimeRange:     a.calculateTimeRange(filtered),
-		StatusCodes:   a.analyseStatusCodes(filtered),
-		TopIPs:        a.analyseTopIPs(filtered),
-		TopURLs:       a.analyseTopURLs(filtered),
-		HTTPMethods:   a.analyseHTTPMethods(filtered),
-		TotalBytes:    a.calculateTotalBytes(filtered),
-		AverageSize:   a.calculateAverageSize(filtered),
-		UniqueIPs:     a.countUniqueIPs(filtered),
-		UniqueURLs:    a.countUniqueURLs(filtered),
-		BotRequests:   botRequests,
-		HumanRequests: humanRequests,
-		TopBots:       a.analyseTopBots(filtered),
-		FileTypes:     a.analyseFileTypes(filtered),
+		TotalRequests:       len(filtered),
+		TimeRange:           a.calculateTimeRange(filtered),
+		StatusCodes:         a.analyseStatusCodes(filtered),
+		DetailedStatusCodes: a.analyseDetailedStatusCodes(filtered),
+		TopIPs:              a.analyseTopIPs(filtered),
+		TopURLs:             a.analyseTopURLs(filtered),
+		HTTPMethods:         a.analyseHTTPMethods(filtered),
+		TotalBytes:          a.calculateTotalBytes(filtered),
+		AverageSize:         a.calculateAverageSize(filtered),
+		UniqueIPs:           a.countUniqueIPs(filtered),
+		UniqueURLs:          a.countUniqueURLs(filtered),
+		BotRequests:         botRequests,
+		HumanRequests:       humanRequests,
+		TopBots:             a.analyseTopBots(filtered),
+		FileTypes:           a.analyseFileTypes(filtered),
+		ErrorURLs:           a.analyseErrorURLs(filtered),
+		LargeRequests:       a.analyseLargeRequests(filtered),
 	}
 
 	return results
@@ -396,6 +410,83 @@ func getFileType(url string) string {
 	default:
 		return "Dynamic/HTML"
 	}
+}
+
+func (a *Analyser) analyseDetailedStatusCodes(logs []*parser.LogEntry) []DetailedStatusCode {
+	statusCounts := make(map[int]int)
+	
+	for _, log := range logs {
+		statusCounts[log.Status]++
+	}
+	
+	var statusStats []DetailedStatusCode
+	for status, count := range statusCounts {
+		statusStats = append(statusStats, DetailedStatusCode{Code: status, Count: count})
+	}
+	
+	sort.Slice(statusStats, func(i, j int) bool {
+		return statusStats[i].Count > statusStats[j].Count
+	})
+	
+	return statusStats
+}
+
+func (a *Analyser) analyseErrorURLs(logs []*parser.LogEntry) []URLStat {
+	errorCounts := make(map[string]int)
+	
+	for _, log := range logs {
+		if log.Status >= 400 { // 4xx and 5xx errors
+			errorCounts[log.URL]++
+		}
+	}
+	
+	var errorStats []URLStat
+	for url, count := range errorCounts {
+		errorStats = append(errorStats, URLStat{URL: url, Count: count})
+	}
+	
+	sort.Slice(errorStats, func(i, j int) bool {
+		return errorStats[i].Count > errorStats[j].Count
+	})
+	
+	// Return top 10 error URLs
+	if len(errorStats) > 10 {
+		errorStats = errorStats[:10]
+	}
+	
+	return errorStats
+}
+
+func (a *Analyser) analyseLargeRequests(logs []*parser.LogEntry) []URLStat {
+	type urlSize struct {
+		url  string
+		size int64
+	}
+	
+	var requests []urlSize
+	for _, log := range logs {
+		requests = append(requests, urlSize{url: log.URL, size: log.Size})
+	}
+	
+	sort.Slice(requests, func(i, j int) bool {
+		return requests[i].size > requests[j].size
+	})
+	
+	// Convert to URLStat format (using size as count for sorting)
+	var largeStats []URLStat
+	seen := make(map[string]bool)
+	
+	for _, req := range requests {
+		if !seen[req.url] && len(largeStats) < 10 {
+			largeStats = append(largeStats, URLStat{
+				URL:   req.url,
+				Count: int(req.size), // Store size in count field for display
+			})
+			seen[req.url] = true
+		}
+	}
+	
+	return largeStats
 }
 
 func getStatusClass(status int) string {

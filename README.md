@@ -25,11 +25,12 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Bot detection and traffic analysis** (human vs automated traffic)
 - [x] **File type analysis** (CSS, JavaScript, images, dynamic content)
 - [x] **Top bot/crawler identification** (Googlebot, curl, monitoring tools)
-- [ ] Error pattern detection and analysis
+- [x] **Export functionality** (JSON and CSV formats with detailed breakdowns)
+- [x] **Detailed drill-down analysis** (individual status codes, error URLs, large requests)
+- [x] **Error pattern detection** (4xx/5xx URLs, failure analysis)
 - [ ] Traffic analysis (requests per hour, peak detection)
 - [ ] Response time analysis and percentiles
 - [ ] Geographic IP analysis
-- [ ] Export to JSON/CSV formats
 
 ### Phase 3 (Real-time & Alerts) 📋
 - [ ] Real-time log file monitoring
@@ -72,6 +73,12 @@ go install github.com/dev-alt/smart-log-analyser@latest
 
 # Test with sample data
 ./smart-log-analyser analyse testdata/sample_access.log
+
+# Show detailed breakdown with individual status codes and error analysis
+./smart-log-analyser analyse /var/log/nginx/access.log --details
+
+# Export results for further analysis
+./smart-log-analyser analyse ./downloads/*.log --export-json=detailed_report.json --export-csv=summary.csv
 ```
 
 ### Remote Server Access
@@ -208,6 +215,9 @@ Accepts one or more log files for analysis. When multiple files are provided, th
 - `--until`: End time for analysis (format: "YYYY-MM-DD HH:MM:SS")
 - `--top-ips`: Number of top IP addresses to display (default: 10)
 - `--top-urls`: Number of top URLs to display (default: 10)
+- `--details`: Show detailed breakdown (individual status codes, error URLs, large requests)
+- `--export-json`: Export detailed results to JSON file (e.g., `--export-json=report.json`)
+- `--export-csv`: Export detailed results to CSV file (e.g., `--export-csv=report.csv`)
 
 ### `download` command
 
@@ -251,6 +261,50 @@ Example `servers.json`:
 ```
 
 ⚠️ **Security Note**: Store the configuration file securely and restrict permissions (`chmod 600 servers.json`).
+
+## Export and Analysis Features
+
+### 📊 Export Formats
+
+**JSON Export** (`--export-json`):
+- Complete analysis results in structured JSON format
+- Includes all metrics, detailed breakdowns, and raw data
+- Perfect for programmatic processing or integration with other tools
+- Contains individual status codes, bot details, file type statistics
+
+**CSV Export** (`--export-csv`):
+- Tabular format suitable for spreadsheet analysis
+- Organized by sections (Overview, Status Codes, Top IPs, etc.)
+- Includes percentages and detailed metrics
+- Easy to import into Excel, Google Sheets, or database systems
+
+### 🔍 Detailed Analysis Mode (`--details`)
+
+When using the `--details` flag, you get additional insights:
+- **Individual Status Codes**: See exact HTTP status codes (200, 404, 500, etc.)
+- **Error Analysis**: URLs generating 4xx/5xx errors with frequency counts
+- **Large Requests**: Biggest requests by response size to identify heavy resources
+- **Enhanced Bot Detection**: More detailed bot breakdown and identification
+
+### 📈 Use Cases
+
+**For System Administrators**:
+```bash
+# Daily log analysis with export for reporting
+./smart-log-analyser analyse /var/log/nginx/access.log* --export-csv=daily_report.csv --details
+
+# Monitor error patterns and investigate issues
+./smart-log-analyser analyse /var/log/nginx/access.log --details | grep "Error Analysis" -A 10
+```
+
+**For Security Analysis**:
+```bash
+# Export detailed data for security analysis tools
+./smart-log-analyser analyse logs/*.log --export-json=security_analysis.json --details
+
+# Focus on bot traffic and suspicious patterns
+./smart-log-analyser analyse logs/*.log --details | grep -E "(Bot|Error)"
+```
 
 ## Multi-File Download Features
 

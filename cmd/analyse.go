@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -11,10 +15,13 @@ import (
 )
 
 var (
-	since   string
-	until   string
-	topIPs  int
-	topURLs int
+	since      string
+	until      string
+	topIPs     int
+	topURLs    int
+	exportJSON string
+	exportCSV  string
+	showDetails bool
 )
 
 var analyseCmd = &cobra.Command{
@@ -67,6 +74,23 @@ Accepts multiple log files to analyse together.`,
 		a := analyser.New()
 		results := a.Analyse(allLogs, sinceTime, untilTime)
 		
+		// Export to files if requested
+		if exportJSON != "" {
+			if err := exportToJSON(results, exportJSON); err != nil {
+				fmt.Printf("❌ Failed to export JSON: %v\n", err)
+			} else {
+				fmt.Printf("📄 Exported detailed results to: %s\n", exportJSON)
+			}
+		}
+		
+		if exportCSV != "" {
+			if err := exportToCSV(results, exportCSV); err != nil {
+				fmt.Printf("❌ Failed to export CSV: %v\n", err)
+			} else {
+				fmt.Printf("📊 Exported detailed results to: %s\n", exportCSV)
+			}
+		}
+		
 		printResults(results)
 	},
 }
@@ -76,6 +100,9 @@ func init() {
 	analyseCmd.Flags().StringVar(&until, "until", "", "End time (YYYY-MM-DD HH:MM:SS)")
 	analyseCmd.Flags().IntVar(&topIPs, "top-ips", 10, "Number of top IPs to show")
 	analyseCmd.Flags().IntVar(&topURLs, "top-urls", 10, "Number of top URLs to show")
+	analyseCmd.Flags().StringVar(&exportJSON, "export-json", "", "Export detailed results to JSON file")
+	analyseCmd.Flags().StringVar(&exportCSV, "export-csv", "", "Export detailed results to CSV file")
+	analyseCmd.Flags().BoolVar(&showDetails, "details", false, "Show detailed breakdown (individual status codes, etc.)")
 }
 
 func printResults(results *analyser.Results) {
@@ -156,6 +183,16 @@ func printResults(results *analyser.Results) {
 			fmt.Printf("├─ %s: %s (%.1f%%)\n", status, formatNumber(count), percentage)
 		}
 	}
+	
+	// Show detailed status codes if requested
+	if showDetails && len(results.DetailedStatusCodes) > 0 {
+		fmt.Printf("└─ Detailed Status Codes:\n")
+		for i, status := range results.DetailedStatusCodes {
+			if i >= 10 { break } // Show top 10 detailed codes
+			percentage := float64(status.Count) / float64(results.TotalRequests) * 100
+			fmt.Printf("   ├─ %d: %s requests (%.1f%%)\n", status.Code, formatNumber(status.Count), percentage)
+		}
+	}
 	fmt.Println()
 
 	// Top IPs
@@ -188,6 +225,35 @@ func printResults(results *analyser.Results) {
 		count++
 	}
 	fmt.Println()
+	
+	// Error Analysis (only show if there are errors and details are requested)
+	if showDetails && len(results.ErrorURLs) > 0 {
+		fmt.Printf("⚠️  Error Analysis\n")
+		fmt.Printf("├─ URLs with Errors (4xx/5xx):\n")
+		for i, url := range results.ErrorURLs {
+			if i >= 5 { break } // Show top 5 error URLs
+			displayURL := url.URL
+			if len(displayURL) > 50 {
+				displayURL = displayURL[:47] + "..."
+			}
+			fmt.Printf("   ├─ %s: %d errors\n", displayURL, url.Count)
+		}
+		fmt.Println()
+	}
+	
+	// Large Requests Analysis (only show if details are requested)
+	if showDetails && len(results.LargeRequests) > 0 {
+		fmt.Printf("📦 Largest Requests by Size\n")
+		for i, url := range results.LargeRequests {
+			if i >= 5 { break } // Show top 5 largest requests
+			displayURL := url.URL
+			if len(displayURL) > 50 {
+				displayURL = displayURL[:47] + "..."
+			}
+			fmt.Printf("├─ %s: %s\n", displayURL, formatBytes(int64(url.Count))) // Count field contains size
+		}
+		fmt.Println()
+	}
 }
 
 // Helper function to format numbers with commas
@@ -221,4 +287,90 @@ func formatBytes(bytes int64) string {
 	}
 	
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+func exportToJSON(results *analyser.Results, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(results)
+}
+
+func exportToCSV(results *analyser.Results, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	
+	// Write overview section
+	writer.Write([]string{"Section", "Metric", "Value", "Percentage"})
+	writer.Write([]string{"Overview", "Total Requests", strconv.Itoa(results.TotalRequests), "100.0"})
+	writer.Write([]string{"Overview", "Unique IPs", strconv.Itoa(results.UniqueIPs), ""})
+	writer.Write([]string{"Overview", "Unique URLs", strconv.Itoa(results.UniqueURLs), ""})
+	writer.Write([]string{"Overview", "Total Bytes", strconv.FormatInt(results.TotalBytes, 10), ""})
+	writer.Write([]string{"Overview", "Average Size", strconv.FormatInt(results.AverageSize, 10), ""})
+	writer.Write([]string{"Overview", "Human Requests", strconv.Itoa(results.HumanRequests), fmt.Sprintf("%.1f", float64(results.HumanRequests)/float64(results.TotalRequests)*100)})
+	writer.Write([]string{"Overview", "Bot Requests", strconv.Itoa(results.BotRequests), fmt.Sprintf("%.1f", float64(results.BotRequests)/float64(results.TotalRequests)*100)})
+	
+	// Write status codes
+	for status, count := range results.StatusCodes {
+		percentage := float64(count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Status Codes", status, strconv.Itoa(count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write detailed status codes
+	for _, status := range results.DetailedStatusCodes {
+		percentage := float64(status.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Detailed Status", strconv.Itoa(status.Code), strconv.Itoa(status.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write top IPs
+	for i, ip := range results.TopIPs {
+		if i >= 20 { break } // Limit to top 20 for CSV
+		percentage := float64(ip.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Top IPs", ip.IP, strconv.Itoa(ip.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write top URLs
+	for i, url := range results.TopURLs {
+		if i >= 20 { break } // Limit to top 20 for CSV
+		percentage := float64(url.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Top URLs", url.URL, strconv.Itoa(url.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write top bots
+	for _, bot := range results.TopBots {
+		percentage := float64(bot.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Top Bots", bot.BotName, strconv.Itoa(bot.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write file types
+	for _, ft := range results.FileTypes {
+		percentage := float64(ft.Count) / float64(results.TotalRequests) * 100
+		avgSize := ft.Size / int64(ft.Count)
+		writer.Write([]string{"File Types", ft.FileType, strconv.Itoa(ft.Count), fmt.Sprintf("%.1f", percentage)})
+		writer.Write([]string{"File Types Size", ft.FileType + " Total", strconv.FormatInt(ft.Size, 10), ""})
+		writer.Write([]string{"File Types Size", ft.FileType + " Average", strconv.FormatInt(avgSize, 10), ""})
+	}
+	
+	// Write error URLs
+	for _, url := range results.ErrorURLs {
+		writer.Write([]string{"Error URLs", url.URL, strconv.Itoa(url.Count), ""})
+	}
+	
+	// Write large requests
+	for _, url := range results.LargeRequests {
+		writer.Write([]string{"Large Requests", url.URL, strconv.Itoa(url.Count), ""}) // Count field contains size
+	}
+	
+	return nil
 }
