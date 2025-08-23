@@ -57,6 +57,23 @@ go build -o smart-log-analyser
 go install github.com/dev-alt/smart-log-analyser@latest
 ```
 
+## Project Structure
+
+The Smart Log Analyser uses the following folder structure:
+
+```
+smart-log-analyser/
+├── config/          # Configuration files (future use)
+├── downloads/       # Downloaded log files from remote servers
+├── output/          # Generated reports and export files
+├── testdata/        # Sample log files for testing
+├── pkg/            # Go packages (parser, analyser, remote)
+├── cmd/            # CLI command implementations
+└── scripts/        # Utility scripts (security checks, etc.)
+```
+
+**Important**: The `downloads/` and `output/` folders are excluded from git to prevent accidentally committing sensitive log files or large output files.
+
 ## Quick Start
 
 ### Local Analysis
@@ -89,8 +106,8 @@ go install github.com/dev-alt/smart-log-analyser@latest
 # Show detailed breakdown with individual status codes and error analysis
 ./smart-log-analyser analyse /var/log/nginx/access.log --details
 
-# Export results for further analysis
-./smart-log-analyser analyse ./downloads/*.log --export-json=detailed_report.json --export-csv=summary.csv
+# Export results for further analysis (files saved to output/ folder)
+./smart-log-analyser analyse ./downloads/*.log --export-json=output/detailed_report.json --export-csv=output/summary.csv
 
 # Analyze traffic patterns and identify peak hours
 ./smart-log-analyser analyse /var/log/nginx/access.log* --details
