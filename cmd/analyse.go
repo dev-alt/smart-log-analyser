@@ -94,6 +94,49 @@ func printResults(results *analyser.Results) {
 		results.TimeRange.Start.Format("2006-01-02 15:04:05"),
 		results.TimeRange.End.Format("2006-01-02 15:04:05"))
 
+	// Traffic Analysis (Bot vs Human)
+	if results.BotRequests > 0 || results.HumanRequests > 0 {
+		fmt.Printf("🤖 Traffic Analysis\n")
+		botPercentage := float64(results.BotRequests) / float64(results.TotalRequests) * 100
+		humanPercentage := float64(results.HumanRequests) / float64(results.TotalRequests) * 100
+		fmt.Printf("├─ Human Traffic: %s (%.1f%%)\n", formatNumber(results.HumanRequests), humanPercentage)
+		fmt.Printf("├─ Bot/Automated: %s (%.1f%%)\n", formatNumber(results.BotRequests), botPercentage)
+		fmt.Println()
+	}
+
+	// Top Bots
+	if len(results.TopBots) > 0 {
+		fmt.Printf("🔍 Top Bots/Crawlers\n")
+		count := 0
+		for _, bot := range results.TopBots {
+			if count >= 5 { // Show top 5 bots
+				break
+			}
+			percentage := float64(bot.Count) / float64(results.TotalRequests) * 100
+			fmt.Printf("├─ %s: %s requests (%.1f%%)\n", bot.BotName, formatNumber(bot.Count), percentage)
+			count++
+		}
+		fmt.Println()
+	}
+
+	// File Types
+	if len(results.FileTypes) > 0 {
+		fmt.Printf("📁 File Type Analysis\n")
+		count := 0
+		for _, fileType := range results.FileTypes {
+			if count >= 8 { // Show top 8 file types
+				break
+			}
+			percentage := float64(fileType.Count) / float64(results.TotalRequests) * 100
+			avgSize := fileType.Size / int64(fileType.Count)
+			fmt.Printf("├─ %s: %s requests (%.1f%%) - %s total, %s avg\n", 
+				fileType.FileType, formatNumber(fileType.Count), percentage, 
+				formatBytes(fileType.Size), formatBytes(avgSize))
+			count++
+		}
+		fmt.Println()
+	}
+
 	// HTTP Methods
 	if len(results.HTTPMethods) > 0 {
 		fmt.Printf("🔧 HTTP Methods\n")

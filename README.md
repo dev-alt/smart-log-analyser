@@ -22,6 +22,9 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] Data transfer analytics (total bytes, average response size)
 - [x] Unique visitor/resource counting
 - [x] Improved console output with emojis and structured display
+- [x] **Bot detection and traffic analysis** (human vs automated traffic)
+- [x] **File type analysis** (CSS, JavaScript, images, dynamic content)
+- [x] **Top bot/crawler identification** (Googlebot, curl, monitoring tools)
 - [ ] Error pattern detection and analysis
 - [ ] Traffic analysis (requests per hour, peak detection)
 - [ ] Response time analysis and percentiles
@@ -122,6 +125,24 @@ go install github.com/dev-alt/smart-log-analyser@latest
 ├─ Data Transferred: 2.1 GB
 ├─ Average Response Size: 512.3 KB
 └─ Date Range: 2024-08-22 10:15:30 to 2024-08-23 23:59:45
+
+🤖 Traffic Analysis
+├─ Human Traffic: 3,264 (76.0%)
+├─ Bot/Automated: 1,032 (24.0%)
+
+🔍 Top Bots/Crawlers
+├─ Googlebot: 287 requests (6.7%)
+├─ Bingbot: 156 requests (3.6%)
+├─ Facebook Bot: 89 requests (2.1%)
+├─ cURL: 67 requests (1.6%)
+├─ Monitoring Bot: 43 requests (1.0%)
+
+📁 File Type Analysis
+├─ Dynamic/HTML: 2,847 requests (66.3%) - 1.8 GB total, 659.2 KB avg
+├─ CSS: 542 requests (12.6%) - 85.4 MB total, 161.2 KB avg
+├─ JavaScript: 398 requests (9.3%) - 124.7 MB total, 320.8 KB avg
+├─ Images: 287 requests (6.7%) - 67.8 MB total, 241.7 KB avg
+├─ Fonts: 89 requests (2.1%) - 15.2 MB total, 174.9 KB avg
 
 🔧 HTTP Methods
 ├─ GET: 3,892 (90.6%)

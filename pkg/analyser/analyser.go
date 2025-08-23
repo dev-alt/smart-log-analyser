@@ -2,6 +2,7 @@ package analyser
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"smart-log-analyser/pkg/parser"
@@ -27,6 +28,17 @@ type MethodStat struct {
 	Count  int
 }
 
+type BotStat struct {
+	BotName string
+	Count   int
+}
+
+type FileTypeStat struct {
+	FileType string
+	Count    int
+	Size     int64
+}
+
 type Results struct {
 	TotalRequests int
 	TimeRange     TimeRange
@@ -38,6 +50,10 @@ type Results struct {
 	AverageSize   int64
 	UniqueIPs     int
 	UniqueURLs    int
+	BotRequests   int
+	HumanRequests int
+	TopBots       []BotStat
+	FileTypes     []FileTypeStat
 }
 
 type Analyser struct{}
@@ -61,9 +77,15 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 			AverageSize:   0,
 			UniqueIPs:     0,
 			UniqueURLs:    0,
+			BotRequests:   0,
+			HumanRequests: 0,
+			TopBots:       []BotStat{},
+			FileTypes:     []FileTypeStat{},
 		}
 	}
 
+	botRequests, humanRequests := a.analyseBotTraffic(filtered)
+	
 	results := &Results{
 		TotalRequests: len(filtered),
 		TimeRange:     a.calculateTimeRange(filtered),
@@ -75,6 +97,10 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 		AverageSize:   a.calculateAverageSize(filtered),
 		UniqueIPs:     a.countUniqueIPs(filtered),
 		UniqueURLs:    a.countUniqueURLs(filtered),
+		BotRequests:   botRequests,
+		HumanRequests: humanRequests,
+		TopBots:       a.analyseTopBots(filtered),
+		FileTypes:     a.analyseFileTypes(filtered),
 	}
 
 	return results
@@ -213,6 +239,163 @@ func (a *Analyser) countUniqueURLs(logs []*parser.LogEntry) int {
 		unique[log.URL] = true
 	}
 	return len(unique)
+}
+
+func (a *Analyser) analyseBotTraffic(logs []*parser.LogEntry) (int, int) {
+	botCount := 0
+	humanCount := 0
+	
+	for _, log := range logs {
+		if isBot(log.UserAgent) {
+			botCount++
+		} else {
+			humanCount++
+		}
+	}
+	
+	return botCount, humanCount
+}
+
+func (a *Analyser) analyseTopBots(logs []*parser.LogEntry) []BotStat {
+	botCounts := make(map[string]int)
+	
+	for _, log := range logs {
+		if botName := getBotName(log.UserAgent); botName != "" {
+			botCounts[botName]++
+		}
+	}
+	
+	var botStats []BotStat
+	for bot, count := range botCounts {
+		botStats = append(botStats, BotStat{BotName: bot, Count: count})
+	}
+	
+	sort.Slice(botStats, func(i, j int) bool {
+		return botStats[i].Count > botStats[j].Count
+	})
+	
+	return botStats
+}
+
+func (a *Analyser) analyseFileTypes(logs []*parser.LogEntry) []FileTypeStat {
+	fileTypeCounts := make(map[string]int)
+	fileTypeSizes := make(map[string]int64)
+	
+	for _, log := range logs {
+		fileType := getFileType(log.URL)
+		fileTypeCounts[fileType]++
+		fileTypeSizes[fileType] += log.Size
+	}
+	
+	var fileTypeStats []FileTypeStat
+	for fileType, count := range fileTypeCounts {
+		fileTypeStats = append(fileTypeStats, FileTypeStat{
+			FileType: fileType,
+			Count:    count,
+			Size:     fileTypeSizes[fileType],
+		})
+	}
+	
+	sort.Slice(fileTypeStats, func(i, j int) bool {
+		return fileTypeStats[i].Count > fileTypeStats[j].Count
+	})
+	
+	return fileTypeStats
+}
+
+func isBot(userAgent string) bool {
+	ua := strings.ToLower(userAgent)
+	botKeywords := []string{
+		"bot", "crawler", "spider", "scraper", "parser",
+		"googlebot", "bingbot", "slurp", "facebookexternalhit",
+		"twitterbot", "linkedinbot", "whatsapp", "telegram",
+		"curl", "wget", "python", "go-http-client", "java",
+		"monitoring", "uptime", "check", "test", "scan",
+	}
+	
+	for _, keyword := range botKeywords {
+		if strings.Contains(ua, keyword) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+func getBotName(userAgent string) string {
+	if !isBot(userAgent) {
+		return ""
+	}
+	
+	ua := strings.ToLower(userAgent)
+	
+	// Common bot patterns
+	botPatterns := map[string]string{
+		"googlebot":              "Googlebot",
+		"bingbot":                "Bingbot", 
+		"slurp":                  "Yahoo Slurp",
+		"facebookexternalhit":    "Facebook Bot",
+		"twitterbot":             "Twitter Bot",
+		"linkedinbot":            "LinkedIn Bot",
+		"whatsapp":               "WhatsApp Bot",
+		"telegram":               "Telegram Bot",
+		"curl":                   "cURL",
+		"wget":                   "Wget",
+		"python":                 "Python Script",
+		"go-http-client":         "Go HTTP Client",
+		"java":                   "Java Client",
+		"monitoring":             "Monitoring Bot",
+		"uptime":                 "Uptime Monitor",
+		"check":                  "Health Check",
+		"scan":                   "Security Scanner",
+	}
+	
+	for pattern, name := range botPatterns {
+		if strings.Contains(ua, pattern) {
+			return name
+		}
+	}
+	
+	return "Unknown Bot"
+}
+
+func getFileType(url string) string {
+	// Remove query parameters
+	url = strings.Split(url, "?")[0]
+	
+	// Get file extension
+	parts := strings.Split(url, ".")
+	if len(parts) < 2 {
+		return "Dynamic/HTML"
+	}
+	
+	ext := strings.ToLower(parts[len(parts)-1])
+	
+	// Group by file type categories
+	switch ext {
+	case "css":
+		return "CSS"
+	case "js":
+		return "JavaScript"
+	case "jpg", "jpeg", "png", "gif", "webp", "ico", "svg":
+		return "Images"
+	case "pdf":
+		return "PDF"
+	case "xml":
+		return "XML"
+	case "txt":
+		return "Text Files"
+	case "zip", "tar", "gz", "rar":
+		return "Archives"
+	case "mp4", "avi", "mov", "wmv":
+		return "Videos"
+	case "mp3", "wav", "ogg":
+		return "Audio"
+	case "woff", "woff2", "ttf", "eot":
+		return "Fonts"
+	default:
+		return "Dynamic/HTML"
+	}
 }
 
 func getStatusClass(status int) string {
