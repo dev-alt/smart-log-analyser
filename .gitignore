@@ -67,6 +67,15 @@ id_*
 logs/
 *.log
 
+# Output files and reports
+/output/
+*.csv
+*.json
+summary.*
+detailed_report.*
+report.*
+analysis.*
+
 # Backup and temporary files
 backups/
 temp/

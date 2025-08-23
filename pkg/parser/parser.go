@@ -32,8 +32,9 @@ type Parser struct {
 }
 
 func New() *Parser {
-	combinedPattern := `^(\S+) \S+ \S+ \[([^\]]+)\] "(\S+) (\S+) (\S+)" (\d+) (\d+) "([^"]*)" "([^"]*)"$`
-	commonPattern := `^(\S+) \S+ \S+ \[([^\]]+)\] "(\S+) (\S+) (\S+)" (\d+) (\d+)$`
+	// More flexible patterns that can handle edge cases
+	combinedPattern := `^(\S+) \S+ \S+ \[([^\]]+)\] "([^"]*)" (\d+) (\d+) "([^"]*)" "([^"]*)"$`
+	commonPattern := `^(\S+) \S+ \S+ \[([^\]]+)\] "([^"]*)" (\d+) (\d+)$`
 
 	return &Parser{
 		combinedRegex: regexp.MustCompile(combinedPattern),
@@ -146,12 +147,16 @@ func (p *Parser) parseCombinedFormat(matches []string) (*LogEntry, error) {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
 
-	status, err := strconv.Atoi(matches[6])
+	// Parse the request field (matches[3]) to extract method, URL, and protocol
+	request := matches[3]
+	method, url, protocol := parseRequestField(request)
+
+	status, err := strconv.Atoi(matches[4])
 	if err != nil {
 		return nil, fmt.Errorf("invalid status code: %w", err)
 	}
 
-	size, err := strconv.ParseInt(matches[7], 10, 64)
+	size, err := strconv.ParseInt(matches[5], 10, 64)
 	if err != nil {
 		size = 0
 	}
@@ -159,13 +164,13 @@ func (p *Parser) parseCombinedFormat(matches []string) (*LogEntry, error) {
 	return &LogEntry{
 		IP:        ip,
 		Timestamp: timestamp,
-		Method:    matches[3],
-		URL:       matches[4],
-		Protocol:  matches[5],
+		Method:    method,
+		URL:       url,
+		Protocol:  protocol,
 		Status:    status,
 		Size:      size,
-		Referer:   matches[8],
-		UserAgent: matches[9],
+		Referer:   matches[6],
+		UserAgent: matches[7],
 	}, nil
 }
 
@@ -180,12 +185,16 @@ func (p *Parser) parseCommonFormat(matches []string) (*LogEntry, error) {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
 
-	status, err := strconv.Atoi(matches[6])
+	// Parse the request field (matches[3]) to extract method, URL, and protocol
+	request := matches[3]
+	method, url, protocol := parseRequestField(request)
+
+	status, err := strconv.Atoi(matches[4])
 	if err != nil {
 		return nil, fmt.Errorf("invalid status code: %w", err)
 	}
 
-	size, err := strconv.ParseInt(matches[7], 10, 64)
+	size, err := strconv.ParseInt(matches[5], 10, 64)
 	if err != nil {
 		size = 0
 	}
@@ -193,14 +202,29 @@ func (p *Parser) parseCommonFormat(matches []string) (*LogEntry, error) {
 	return &LogEntry{
 		IP:        ip,
 		Timestamp: timestamp,
-		Method:    matches[3],
-		URL:       matches[4],
-		Protocol:  matches[5],
+		Method:    method,
+		URL:       url,
+		Protocol:  protocol,
 		Status:    status,
 		Size:      size,
 		Referer:   "",
 		UserAgent: "",
 	}, nil
+}
+
+func parseRequestField(request string) (method, url, protocol string) {
+	// Parse "METHOD URL PROTOCOL" format
+	parts := strings.SplitN(request, " ", 3)
+	if len(parts) >= 3 {
+		return parts[0], parts[1], parts[2]
+	} else if len(parts) == 2 {
+		// Sometimes protocol might be missing
+		return parts[0], parts[1], ""
+	} else if len(parts) == 1 {
+		// Sometimes only URL is present
+		return "", parts[0], ""
+	}
+	return "", "", ""
 }
 
 func parseTimestamp(timestampStr string) (time.Time, error) {
