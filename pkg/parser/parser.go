@@ -118,7 +118,7 @@ func (p *Parser) createReader(file *os.File, filename string) (io.Reader, error)
 
 // isRotatedLogFile checks if filename matches rotated log pattern
 func (p *Parser) isRotatedLogFile(filename string) bool {
-	// Match patterns like: access.log.1, error.log.12, nzlmra.nz.access.log.5, etc.
+	// Match patterns like: access.log.1, error.log.12, site.access.log.5, etc.
 	rotatedPattern := regexp.MustCompile(`\.(log|access|error)(\.\d+)?$`)
 	return rotatedPattern.MatchString(strings.ToLower(filename))
 }

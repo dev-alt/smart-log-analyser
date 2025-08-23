@@ -274,7 +274,7 @@ The Smart Log Analyser can process various log file formats:
 - **Regular log files**: `access.log`, `error.log`, `nginx.log`
 - **Rotated log files**: `access.log.1`, `access.log.2`, `forum.access.log.5`
 - **Compressed files**: `access.log.1.gz`, `error.log.14.gz`, `forum.access.log.5.gz`
-- **Complex naming**: `nzlmra.nz.access.log`, `nzlmra.nz.error.log.11.gz`
+- **Complex naming**: `example.com.access.log`, `site.error.log.11.gz`
 
 **Supported compression formats:**
 - ✅ **Gzip (.gz)** - Automatic decompression during analysis
@@ -542,6 +542,7 @@ Built with:
 - Test connections are logged - avoid using production servers for testing
 - Downloaded log files may contain sensitive data - they are also excluded from git
 - Review `.gitignore` regularly to ensure all sensitive patterns are covered
+- Use `./scripts/check-sensitive-data.sh` before commits to scan for sensitive data
 
 ## Development Guidelines
 
