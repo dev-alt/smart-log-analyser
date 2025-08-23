@@ -67,11 +67,20 @@ go install github.com/dev-alt/smart-log-analyser@latest
 # Test SSH connections
 ./smart-log-analyser download --test
 
-# Download log files from all servers
+# List available log files without downloading
+./smart-log-analyser download --list
+
+# Download single log file (default: access.log only)
 ./smart-log-analyser download
 
+# Download ALL access log files (current + rotated)
+./smart-log-analyser download --all
+
+# Download limited number of files
+./smart-log-analyser download --all --max-files 5
+
 # Download from specific server
-./smart-log-analyser download --server your-server.com
+./smart-log-analyser download --server your-server.com --all
 
 # Analyse downloaded files
 ./smart-log-analyser analyse ./downloads/*.log
@@ -144,6 +153,9 @@ smart-log-analyser/
 - `--output`: Directory to save downloaded files (default: "./downloads")
 - `--test`: Test SSH connection without downloading
 - `--init`: Create a sample configuration file (will not overwrite existing files)
+- `--list`: List available log files without downloading
+- `--all`: Download all access log files (current + rotated)
+- `--max-files`: Maximum number of files to download when using --all (default: 10)
 
 ## SSH Configuration
 
@@ -175,6 +187,37 @@ Example `servers.json`:
 ```
 
 ⚠️ **Security Note**: Store the configuration file securely and restrict permissions (`chmod 600 servers.json`).
+
+## Multi-File Download Features
+
+### 🔍 Discovery and Listing
+```bash
+# List all available log files on server
+./smart-log-analyser download --list
+```
+
+This will show you all access log files including:
+- Current log files (`access.log`, `forum.access.log`, etc.)
+- Rotated log files (`access.log.1`, `access.log.2`, etc.) 
+- Compressed logs (`access.log.gz`, `access.log.12.gz`, etc.)
+
+### 📦 Bulk Download Options
+```bash
+# Download all access log files (up to 10 by default)
+./smart-log-analyser download --all
+
+# Download more files (up to 20)
+./smart-log-analyser download --all --max-files 20
+
+# Download from specific server only
+./smart-log-analyser download --all --server your-server.com
+```
+
+### 📊 Download Behavior
+- **Single file mode** (default): Downloads only the configured `log_path` file
+- **Multi-file mode** (`--all`): Downloads all access log files found in the log directory
+- **Smart naming**: Files are saved as `hostname_timestamp_originalname` to avoid conflicts
+- **Progress tracking**: Shows download progress for each file with size information
 
 ## Development
 

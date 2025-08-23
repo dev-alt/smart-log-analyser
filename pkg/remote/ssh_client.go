@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -108,13 +109,53 @@ func (c *SSHClient) ListLogFiles(logDir string) ([]string, error) {
 	}
 	defer session.Close()
 
-	cmd := fmt.Sprintf("ls -la %s/*.log 2>/dev/null || echo 'No log files found'", logDir)
+	// List all log files including rotated and compressed ones
+	cmd := fmt.Sprintf("find %s -name '*.log' -o -name '*.log.[0-9]*' -o -name '*.log.gz' | head -50", logDir)
 	output, err := session.Output(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files: %w", err)
 	}
 
-	return []string{string(output)}, nil
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	var files []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			files = append(files, line)
+		}
+	}
+
+	return files, nil
+}
+
+func (c *SSHClient) ListAccessLogFiles(logDir string) ([]string, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("not connected to server")
+	}
+
+	session, err := c.client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+	defer session.Close()
+
+	// List access log files (current and rotated)
+	cmd := fmt.Sprintf("find %s -name '*access.log*' | head -20", logDir)
+	output, err := session.Output(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list access log files: %w", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	var files []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			files = append(files, line)
+		}
+	}
+
+	return files, nil
 }
 
 func (c *SSHClient) CheckConnection() error {

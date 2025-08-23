@@ -18,6 +18,9 @@ var (
 	outputDir    string
 	testConn     bool
 	createConfig bool
+	downloadAll  bool
+	listFiles    bool
+	maxFiles     int
 )
 
 var downloadCmd = &cobra.Command{
@@ -36,6 +39,11 @@ Requires a JSON configuration file with server details.`,
 			return
 		}
 
+		if listFiles {
+			handleListFiles()
+			return
+		}
+
 		handleDownload()
 	},
 }
@@ -46,6 +54,9 @@ func init() {
 	downloadCmd.Flags().StringVar(&outputDir, "output", "./downloads", "Directory to save downloaded files")
 	downloadCmd.Flags().BoolVar(&testConn, "test", false, "Test SSH connection without downloading")
 	downloadCmd.Flags().BoolVar(&createConfig, "init", false, "Create a sample configuration file")
+	downloadCmd.Flags().BoolVar(&downloadAll, "all", false, "Download all access log files (current + rotated)")
+	downloadCmd.Flags().BoolVar(&listFiles, "list", false, "List available log files without downloading")
+	downloadCmd.Flags().IntVar(&maxFiles, "max-files", 10, "Maximum number of files to download when using --all")
 }
 
 func handleCreateConfig() {
@@ -111,6 +122,68 @@ func handleTestConnection() {
 	}
 }
 
+func handleListFiles() {
+	config, err := remote.LoadConfig(configFile)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	if len(config.Servers) == 0 {
+		log.Fatal("No servers configured")
+	}
+
+	fmt.Println("Listing available log files...\n")
+
+	for _, server := range config.Servers {
+		if serverName != "" && server.Host != serverName {
+			continue
+		}
+
+		fmt.Printf("📋 Server: %s@%s:%d\n", server.Username, server.Host, server.Port)
+		
+		client := remote.NewSSHClient(&server)
+		
+		if err := client.Connect(); err != nil {
+			fmt.Printf("❌ Failed to connect: %v\n\n", err)
+			continue
+		}
+
+		// Get log directory from configured path
+		logDir := filepath.Dir(server.LogPath)
+		if logDir == "." {
+			logDir = "/var/log/nginx"
+		}
+
+		// List access log files
+		accessFiles, err := client.ListAccessLogFiles(logDir)
+		if err != nil {
+			fmt.Printf("❌ Failed to list files: %v\n", err)
+			client.Close()
+			continue
+		}
+
+		if len(accessFiles) > 0 {
+			fmt.Printf("📁 Access log files in %s:\n", logDir)
+			for i, file := range accessFiles {
+				if i >= 20 { // Limit display
+					fmt.Printf("   ... and %d more files\n", len(accessFiles)-i)
+					break
+				}
+				fmt.Printf("   • %s\n", file)
+			}
+			fmt.Printf("   Total: %d files\n", len(accessFiles))
+		} else {
+			fmt.Printf("   No access log files found in %s\n", logDir)
+		}
+
+		client.Close()
+		fmt.Println()
+	}
+
+	fmt.Println("Use --all flag to download all access log files.")
+	fmt.Println("Use --max-files to limit the number of files downloaded.")
+}
+
 func handleDownload() {
 	config, err := remote.LoadConfig(configFile)
 	if err != nil {
@@ -142,25 +215,67 @@ func handleDownload() {
 			continue
 		}
 
-		// Generate local filename with timestamp and server name
-		timestamp := time.Now().Format("20060102_150405")
-		localFilename := fmt.Sprintf("%s_%s_access.log", server.Host, timestamp)
-		localPath := filepath.Join(outputDir, localFilename)
-
-		fmt.Printf("Downloading %s -> %s\n", server.LogPath, localFilename)
-		
-		if err := client.DownloadFile(server.LogPath, localPath); err != nil {
-			fmt.Printf("❌ Download failed: %v\n", err)
-			client.Close()
-			continue
+		var filesToDownload []string
+		logDir := filepath.Dir(server.LogPath)
+		if logDir == "." {
+			logDir = "/var/log/nginx"
 		}
 
-		// Check file size
-		if stat, err := os.Stat(localPath); err == nil {
-			fmt.Printf("✅ Downloaded successfully (%d bytes)\n", stat.Size())
+		if downloadAll {
+			// Download all access log files
+			accessFiles, err := client.ListAccessLogFiles(logDir)
+			if err != nil {
+				fmt.Printf("❌ Failed to list files: %v\n", err)
+				client.Close()
+				continue
+			}
+			
+			// Limit number of files
+			if len(accessFiles) > maxFiles {
+				fmt.Printf("⚠️  Found %d files, downloading first %d (use --max-files to change)\n", len(accessFiles), maxFiles)
+				accessFiles = accessFiles[:maxFiles]
+			}
+			
+			filesToDownload = accessFiles
+			fmt.Printf("📦 Downloading %d access log files...\n", len(filesToDownload))
 		} else {
-			fmt.Printf("✅ Downloaded successfully\n")
+			// Download single file as before
+			filesToDownload = []string{server.LogPath}
 		}
+
+		timestamp := time.Now().Format("20060102_150405")
+		totalBytes := int64(0)
+		successCount := 0
+
+		for i, remoteFile := range filesToDownload {
+			// Generate local filename
+			baseName := filepath.Base(remoteFile)
+			localFilename := fmt.Sprintf("%s_%s_%s", server.Host, timestamp, baseName)
+			localPath := filepath.Join(outputDir, localFilename)
+
+			fmt.Printf("  [%d/%d] %s -> %s\n", i+1, len(filesToDownload), remoteFile, localFilename)
+			
+			if err := client.DownloadFile(remoteFile, localPath); err != nil {
+				fmt.Printf("    ❌ Failed: %v\n", err)
+				continue
+			}
+
+			// Check file size
+			if stat, err := os.Stat(localPath); err == nil {
+				fmt.Printf("    ✅ Downloaded (%d bytes)\n", stat.Size())
+				totalBytes += stat.Size()
+				successCount++
+			} else {
+				fmt.Printf("    ✅ Downloaded\n")
+				successCount++
+			}
+		}
+
+		fmt.Printf("📊 Summary: %d/%d files downloaded successfully", successCount, len(filesToDownload))
+		if totalBytes > 0 {
+			fmt.Printf(" (%d bytes total)", totalBytes)
+		}
+		fmt.Println()
 
 		client.Close()
 		fmt.Println()
