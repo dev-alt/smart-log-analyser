@@ -19,6 +19,7 @@ var (
 	testConn     bool
 	createConfig bool
 	downloadAll  bool
+	singleFile   bool
 	listFiles    bool
 	maxFiles     int
 )
@@ -54,9 +55,10 @@ func init() {
 	downloadCmd.Flags().StringVar(&outputDir, "output", "./downloads", "Directory to save downloaded files")
 	downloadCmd.Flags().BoolVar(&testConn, "test", false, "Test SSH connection without downloading")
 	downloadCmd.Flags().BoolVar(&createConfig, "init", false, "Create a sample configuration file")
-	downloadCmd.Flags().BoolVar(&downloadAll, "all", false, "Download all access log files (current + rotated)")
+	downloadCmd.Flags().BoolVar(&downloadAll, "all", false, "Download all access log files (default behavior)")
+	downloadCmd.Flags().BoolVar(&singleFile, "single", false, "Download only the main configured log file")
 	downloadCmd.Flags().BoolVar(&listFiles, "list", false, "List available log files without downloading")
-	downloadCmd.Flags().IntVar(&maxFiles, "max-files", 10, "Maximum number of files to download when using --all")
+	downloadCmd.Flags().IntVar(&maxFiles, "max-files", 10, "Maximum number of files to download (default: 10)")
 }
 
 func handleCreateConfig() {
@@ -221,8 +223,12 @@ func handleDownload() {
 			logDir = "/var/log/nginx"
 		}
 
-		if downloadAll {
-			// Download all access log files
+		if singleFile {
+			// Download single file only (when --single flag is used)
+			filesToDownload = []string{server.LogPath}
+			fmt.Printf("📄 Downloading single log file: %s\n", server.LogPath)
+		} else {
+			// Default behavior: Download all access log files
 			accessFiles, err := client.ListAccessLogFiles(logDir)
 			if err != nil {
 				fmt.Printf("❌ Failed to list files: %v\n", err)
@@ -238,9 +244,6 @@ func handleDownload() {
 			
 			filesToDownload = accessFiles
 			fmt.Printf("📦 Downloading %d access log files...\n", len(filesToDownload))
-		} else {
-			// Download single file as before
-			filesToDownload = []string{server.LogPath}
 		}
 
 		timestamp := time.Now().Format("20060102_150405")

@@ -70,17 +70,17 @@ go install github.com/dev-alt/smart-log-analyser@latest
 # List available log files without downloading
 ./smart-log-analyser download --list
 
-# Download single log file (default: access.log only)
+# Download ALL access log files (default behavior)
 ./smart-log-analyser download
 
-# Download ALL access log files (current + rotated)
-./smart-log-analyser download --all
+# Download single log file only
+./smart-log-analyser download --single
 
-# Download limited number of files
-./smart-log-analyser download --all --max-files 5
+# Download limited number of files  
+./smart-log-analyser download --max-files 5
 
 # Download from specific server
-./smart-log-analyser download --server your-server.com --all
+./smart-log-analyser download --server your-server.com
 
 # Analyse downloaded files
 ./smart-log-analyser analyse ./downloads/*.log
@@ -154,8 +154,9 @@ smart-log-analyser/
 - `--test`: Test SSH connection without downloading
 - `--init`: Create a sample configuration file (will not overwrite existing files)
 - `--list`: List available log files without downloading
-- `--all`: Download all access log files (current + rotated)
-- `--max-files`: Maximum number of files to download when using --all (default: 10)
+- `--single`: Download only the main configured log file
+- `--max-files`: Maximum number of files to download (default: 10)
+- `--all`: Download all access log files (same as default behavior)
 
 ## SSH Configuration
 
@@ -214,10 +215,11 @@ This will show you all access log files including:
 ```
 
 ### 📊 Download Behavior
-- **Single file mode** (default): Downloads only the configured `log_path` file
-- **Multi-file mode** (`--all`): Downloads all access log files found in the log directory
+- **Multi-file mode** (default): Downloads all access log files found in the log directory (up to 10 files)
+- **Single file mode** (`--single`): Downloads only the configured `log_path` file
 - **Smart naming**: Files are saved as `hostname_timestamp_originalname` to avoid conflicts
 - **Progress tracking**: Shows download progress for each file with size information
+- **Configurable limit**: Use `--max-files` to control how many files to download
 
 ## Development
 
