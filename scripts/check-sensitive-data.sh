@@ -20,8 +20,8 @@ for pattern in "${PATTERNS[@]}"; do
     echo "Checking pattern: $pattern"
     # Exclude .git, downloads, and development log files from sensitive checks
     MATCHES=$(grep -r "$pattern" . --exclude-dir=.git --exclude-dir=downloads \
-              --exclude=".development_log.md" --exclude="servers.json" \
-              --exclude="check-sensitive-data.sh" --exclude="*.gz" 2>/dev/null || true)
+              --exclude="servers.json" --exclude="check-sensitive-data.sh" \
+              --exclude="*.gz" 2>/dev/null || true)
     
     if [ ! -z "$MATCHES" ]; then
         echo "⚠️  WARNING: Potential sensitive data found for pattern '$pattern':"
