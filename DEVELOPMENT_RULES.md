@@ -36,7 +36,8 @@ id_*, *_rsa*, *_ed25519*, *_ecdsa*
 
 # Application Data
 downloads/, logs/, *.log (real data)
-backups/, temp/, cache/
+output/, backups/, temp/, cache/
+*.csv, *.json (analysis reports)
 ```
 
 ### 3. Development Session Tracking 📝
@@ -105,10 +106,40 @@ git log --oneline -3
 ### Always Exclude in .gitignore:
 - ✅ Real configuration files (servers.json, .env*)
 - ✅ SSH key files (id_*, *.pem, *.key, *.crt)
-- ✅ Download directories and log files
+- ✅ Download directories and log files (downloads/, *.log)
+- ✅ Output files and reports (output/, *.csv, *.json, detailed_report.*, summary.*)
 - ✅ Backup and temporary files
 - ✅ IDE-specific files with potential secrets
-- ✅ Any directory that might contain real data
+- ✅ Any directory that might contain real data or sensitive analysis results
+
+---
+
+## Project Structure Standards
+
+### Folder Organization:
+```
+smart-log-analyser/
+├── config/          # Configuration files (future use, excluded from git if sensitive)
+├── downloads/       # Downloaded log files (ALWAYS excluded from git)
+├── output/          # Generated reports and exports (ALWAYS excluded from git)  
+├── testdata/        # Sample/test log files (safe for git - no real data)
+├── pkg/             # Go packages (included in git)
+├── cmd/             # CLI commands (included in git)
+├── scripts/         # Utility scripts (included in git, check for sensitive data)
+└── docs/            # Additional documentation (included in git)
+```
+
+### Folder Security Rules:
+- **config/**: May contain sensitive data when implemented - verify before commits
+- **downloads/**: NEVER commit - contains real log files with potentially sensitive data
+- **output/**: NEVER commit - contains analysis results that may expose sensitive information
+- **testdata/**: Safe to commit - contains only sanitized sample data
+- **scripts/**: Review carefully - may contain temporary sensitive data or credentials
+
+### New Folder Guidelines:
+- Any new folder that might contain real data must be added to .gitignore
+- Document the purpose and security considerations in folder README.md files
+- Use placeholder/example files for any configuration templates
 
 ---
 
@@ -184,12 +215,14 @@ git log --oneline -3
 - [ ] No real passwords, API keys, or tokens
 - [ ] No SSH private keys or certificates  
 - [ ] No real server IPs or hostnames
-- [ ] No production log files or data
+- [ ] No production log files or data in downloads/
+- [ ] No analysis reports with sensitive data in output/
 - [ ] .gitignore updated for new sensitive patterns
 - [ ] Documentation updated for new features
 - [ ] Security warnings added where appropriate
 - [ ] Example files use placeholder values
 - [ ] .development_log.md updated with session details
+- [ ] New folders properly documented and secured
 
 **Before every push, confirm:**
 - [ ] All tests pass
