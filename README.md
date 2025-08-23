@@ -74,9 +74,47 @@ smart-log-analyser/
 
 **Important**: The `downloads/` and `output/` folders are excluded from git to prevent accidentally committing sensitive log files or large output files.
 
+## Interactive Menu System 🎯
+
+Smart Log Analyser now features an **interactive menu system** that launches when you run the program without arguments. This provides a user-friendly interface for all operations.
+
+### Launching the Interactive Menu
+```bash
+# Simply run the program to launch the interactive menu
+./smart-log-analyser
+```
+
+### Menu Features
+- **📂 Analyse Local Log Files**: Browse and select log files with guided analysis
+- **🌐 Download & Analyse Remote Logs**: Manage remote server connections and downloads
+- **📈 Generate HTML Report**: Create interactive reports with custom settings
+- **🔧 Configuration & Setup**: Configure servers, preferences, and export settings
+- **📚 Help & Documentation**: Built-in help and guidance
+- **🚪 Exit**: Clean exit from the application
+
+### Interactive Workflows
+The menu system guides you through:
+- **File Selection**: Browse directories, use wildcards, or manually enter paths
+- **Time Range Filtering**: Set custom date/time ranges for analysis
+- **Export Options**: Choose from HTML, JSON, CSV formats with custom settings
+- **Analysis Configuration**: Select detailed analysis options
+- **Progress Tracking**: Real-time progress indicators for long operations
+
 ## Quick Start
 
-### Local Analysis
+### Interactive Mode (Recommended)
+```bash
+# Launch interactive menu for guided experience
+./smart-log-analyser
+
+# Follow the prompts to:
+# 1. Select "Analyse Local Log Files"
+# 2. Choose your log files
+# 3. Configure analysis options
+# 4. Generate reports
+```
+
+### Command Line Mode
 ```bash
 # Analyse a single log file
 ./smart-log-analyser analyse /var/log/nginx/access.log
@@ -188,6 +226,39 @@ open output/report.html
 # Open in default browser (Windows)
 start output/report.html
 ```
+
+## Dual Operation Modes
+
+Smart Log Analyser supports both **interactive menu mode** and **traditional CLI mode**:
+
+### When to Use Each Mode
+
+**🎯 Interactive Mode** - Best for:
+- New users learning the system
+- Complex analysis with multiple options
+- Guided report generation
+- Configuration and setup tasks
+- Exploring available features
+
+**⚡ CLI Mode** - Best for:
+- Automation and scripting
+- Batch processing workflows
+- Integration with CI/CD pipelines
+- Power users who know exact commands
+- Remote server usage via SSH
+
+### Switching Between Modes
+```bash
+# Interactive mode (menu-driven)
+./smart-log-analyser
+
+# CLI mode (direct commands)
+./smart-log-analyser analyse logs/ --export-html=output/report.html
+./smart-log-analyser download --test
+./smart-log-analyser --help
+```
+
+Both modes provide access to the same powerful analysis features, just with different user interfaces optimized for different use cases.
 
 ## Example Output
 

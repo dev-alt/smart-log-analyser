@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"os"
+	
 	"github.com/spf13/cobra"
+	"smart-log-analyser/pkg/menu"
 )
 
 var rootCmd = &cobra.Command{
@@ -11,6 +14,19 @@ var rootCmd = &cobra.Command{
 gain insights from their Nginx access logs. It provides statistical analysis, 
 error pattern detection, traffic analysis, and real-time monitoring with 
 configurable alerting.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		// If no subcommand is provided, launch interactive menu
+		if len(args) == 0 {
+			menuSystem := menu.New()
+			if err := menuSystem.Run(); err != nil {
+				os.Exit(1)
+			}
+			return
+		}
+		
+		// Otherwise show help
+		cmd.Help()
+	},
 }
 
 func Execute() error {
