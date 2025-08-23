@@ -30,14 +30,18 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Error pattern detection** (4xx/5xx URLs, failure analysis)
 - [x] **Traffic pattern analysis** (hourly breakdowns, peak detection, visual charts)
 - [x] **Peak traffic detection** (automatic identification of traffic spikes)
-- [ ] Response time analysis and percentiles
-- [ ] Geographic IP analysis
+- [x] **Response time analysis and percentiles** (P50, P95, P99 using response size as proxy)
+- [x] **Geographic IP analysis** (country/region detection, private network identification)
+- [x] **Advanced security analysis** (attack pattern detection, anomaly detection, threat scoring)
+- [x] **Compressed file support** (automatic .gz decompression, rotated log files)
 
-### Phase 3 (Real-time & Alerts) 📋
-- [ ] Real-time log file monitoring
-- [ ] Configurable alert rules (YAML configuration)
-- [ ] Custom alert thresholds
-- [ ] Multiple output destinations
+### Phase 3 (Advanced Analytics) 📋
+- [ ] Historical trend analysis (compare periods, track degradation)
+- [ ] ASCII charts and terminal visualizations
+- [ ] HTML report generation with embedded charts
+- [ ] Advanced query language for complex filtering
+- [ ] Database integration (SQLite, PostgreSQL export)
+- [ ] Plugin architecture for custom analyzers
 
 ## Installation
 
@@ -63,8 +67,15 @@ go install github.com/dev-alt/smart-log-analyser@latest
 # Analyse multiple log files together
 ./smart-log-analyser analyse /var/log/nginx/access.log /var/log/nginx/access.log.1
 
-# Analyse all downloaded files using wildcard
+# Analyse compressed log files (.gz)
+./smart-log-analyser analyse /var/log/nginx/access.log.1.gz
+
+# Analyse all downloaded files using wildcard (supports compressed files)
 ./smart-log-analyser analyse ./downloads/*.log
+./smart-log-analyser analyse ./downloads/*.gz
+
+# Analyse all log files including compressed and rotated logs
+./smart-log-analyser analyse /var/log/nginx/access.log* /var/log/nginx/error.log*
 
 # Filter by time range
 ./smart-log-analyser analyse /var/log/nginx/access.log --since="2024-08-20 00:00:00" --until="2024-08-20 23:59:59"
@@ -174,6 +185,55 @@ go install github.com/dev-alt/smart-log-analyser@latest
 ├─ Peak #1: 2024-08-22 14:00 - 892 requests (1 hour)
 ├─ Peak #2: 2024-08-22 13:00 - 578 requests (1 hour)
 
+⏱️  Response Size Analysis (Proxy for Response Time)
+├─ Average Response: 512.3 KB
+├─ Median (P50): 234.5 KB
+├─ 95th Percentile: 1.2 MB
+├─ 99th Percentile: 2.8 MB
+├─ Range: 128 B - 3.4 MB
+├─ Slowest Endpoints (by size):
+│  ├─ /api/large-report: 3.4 MB
+│  ├─ /downloads/document.pdf: 2.1 MB
+└─ Fastest Endpoints (by size):
+   ├─ /api/status: 128 B
+   ├─ /health: 156 B
+
+🌍 Geographic Distribution
+├─ Local/Private: 1,247 (29.0%)
+├─ Cloudflare CDN: 892 (20.8%)
+├─ Countries (15 total):
+│  ├─ United States: 1,156 requests (26.9%)
+│  ├─ United Kingdom: 234 requests (5.4%)
+│  ├─ Australia/NZ: 189 requests (4.4%)
+│  ├─ Germany: 167 requests (3.9%)
+│  ├─ Canada: 143 requests (3.3%)
+└─ Regions:
+   ├─ North America: 1,299 requests (30.2%)
+   ├─ Europe: 567 requests (13.2%)
+   ├─ Asia-Pacific: 234 requests (5.4%)
+   ├─ Oceania: 189 requests (4.4%)
+
+🔐 Security Analysis (Threat Level: LOW, Score: 92/100)
+├─ Total Threats Detected: 12
+├─ Suspicious IPs: 3
+├─ Anomalies Detected: 1
+├─ Attack Breakdown:
+│  ├─ SQL Injection: 4 attempts
+│  ├─ XSS Attempts: 2
+│  ├─ Directory Traversal: 3 attempts
+│  ├─ Brute Force: 2 attempts
+│  ├─ Scanning Activity: 1 instances
+├─ Top Threat IPs:
+│  ├─ 203.0.113.1: 15 requests (Score: 45, sql_injection, scanner)
+│  ├─ 198.51.100.42: 12 requests (Score: 35, xss, directory_traversal)
+└─ Recent High-Severity Threats:
+   ├─ [14:23:15] Sql Injection from 203.0.113.1
+   │   URL: /search?q=admin' OR 1=1--
+   │   Pattern: Boolean-based injection
+   ├─ [14:25:42] Directory Traversal from 198.51.100.42
+   │   URL: /files/../../../../etc/passwd
+   │   Pattern: Unix-style traversal (../)
+
 🔧 HTTP Methods
 ├─ GET: 3,892 (90.6%)
 ├─ POST: 347 (8.1%)
@@ -206,6 +266,24 @@ Currently supports standard Nginx access log formats:
 
 - **Combined Log Format**: `$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"`
 - **Common Log Format**: `$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent`
+
+### File Format Support
+
+The Smart Log Analyser can process various log file formats:
+
+- **Regular log files**: `access.log`, `error.log`, `nginx.log`
+- **Rotated log files**: `access.log.1`, `access.log.2`, `forum.access.log.5`
+- **Compressed files**: `access.log.1.gz`, `error.log.14.gz`, `forum.access.log.5.gz`
+- **Complex naming**: `nzlmra.nz.access.log`, `nzlmra.nz.error.log.11.gz`
+
+**Supported compression formats:**
+- ✅ **Gzip (.gz)** - Automatic decompression during analysis
+- 📋 **Bzip2 (.bz2)** - Planned for future releases
+
+**File detection patterns:**
+- Files ending with `.log`, `.access`, `.error` (with optional numbers)
+- Compressed variants with `.gz` extension
+- Mixed patterns like `site.access.log.12.gz`
 
 ## Project Structure
 
@@ -308,25 +386,41 @@ When using the `--details` flag, you get additional insights:
 - **Error Analysis**: URLs generating 4xx/5xx errors with frequency counts
 - **Large Requests**: Biggest requests by response size to identify heavy resources
 - **Enhanced Bot Detection**: More detailed bot breakdown and identification
+- **Response Time Analysis**: Percentile analysis using response size as proxy (P50, P95, P99)
+- **Geographic Distribution**: Country and region breakdown of IP addresses with CDN detection
+- **Security Threat Analysis**: Detailed attack patterns, IP threat scoring, and anomaly detection
+- **Compressed File Support**: Seamless processing of .gz files and rotated logs
 
 ### 📈 Use Cases
 
 **For System Administrators**:
 ```bash
-# Daily log analysis with export for reporting
+# Daily log analysis with export for reporting (including compressed files)
 ./smart-log-analyser analyse /var/log/nginx/access.log* --export-csv=daily_report.csv --details
+
+# Analyse all log files including rotated and compressed
+./smart-log-analyser analyse /var/log/nginx/*.log /var/log/nginx/*.log.* /var/log/nginx/*.gz --details
 
 # Monitor error patterns and investigate issues
 ./smart-log-analyser analyse /var/log/nginx/access.log --details | grep "Error Analysis" -A 10
+
+# Process downloaded compressed logs efficiently
+./smart-log-analyser analyse ./downloads/*.gz --export-json=compressed_analysis.json
 ```
 
 **For Security Analysis**:
 ```bash
-# Export detailed data for security analysis tools
-./smart-log-analyser analyse logs/*.log --export-json=security_analysis.json --details
+# Comprehensive security analysis with threat detection
+./smart-log-analyser analyse logs/*.log logs/*.gz --export-json=security_analysis.json --details
 
-# Focus on bot traffic and suspicious patterns
-./smart-log-analyser analyse logs/*.log --details | grep -E "(Bot|Error)"
+# Monitor for specific attack patterns and anomalies
+./smart-log-analyser analyse /var/log/nginx/*.log* --details | grep -E "(Security|Threat|Anomaly)"
+
+# Process compressed security logs for incident analysis
+./smart-log-analyser analyse ./incident_logs/*.gz --details --export-csv=security_report.csv
+
+# Real-world security monitoring example
+./smart-log-analyser analyse /var/log/nginx/access.log* /var/log/nginx/error.log* --details
 ```
 
 ## Multi-File Download Features
@@ -372,6 +466,20 @@ This will show you all access log files including:
 go build -o smart-log-analyser
 ```
 
+### Performance Features
+
+**Compressed File Optimization**:
+- Automatic detection of file types based on extensions
+- Streaming decompression for memory efficiency
+- Large buffer support (1MB) for processing big compressed files
+- Concurrent processing capability for multiple files
+
+**File Processing Capabilities**:
+- Handles files of any size through streaming
+- Memory-efficient processing of compressed archives
+- Supports mixed file types in single analysis session
+- Robust error handling for corrupted or incomplete files
+
 ### Testing
 ```bash
 # Test with sample data
@@ -402,8 +510,9 @@ This project is licensed under the MIT License.
 
 - **v0.1.0**: Basic log parsing and statistics ✅
 - **v0.1.1**: SSH remote log download ✅
-- **v0.2.0**: Advanced analytics and export features
-- **v0.3.0**: Real-time monitoring and alerting
+- **v0.2.0**: Advanced analytics and export features ✅
+- **v0.2.1**: Security analysis and compressed file support ✅  
+- **v0.3.0**: Advanced analytics and visualizations
 - **v1.0.0**: Production-ready with comprehensive documentation
 
 ## Acknowledgments

@@ -197,6 +197,81 @@ func printResults(results *analyser.Results) {
 		fmt.Println()
 	}
 
+	// Response Time Analysis (only show if details requested)
+	if showDetails && results.ResponseTimeStats.AverageSize > 0 {
+		fmt.Printf("⏱️  Response Size Analysis (Proxy for Response Time)\n")
+		fmt.Printf("├─ Average Response: %s\n", formatBytes(results.ResponseTimeStats.AverageSize))
+		fmt.Printf("├─ Median (P50): %s\n", formatBytes(results.ResponseTimeStats.MedianSize))
+		fmt.Printf("├─ 95th Percentile: %s\n", formatBytes(results.ResponseTimeStats.P95Size))
+		fmt.Printf("├─ 99th Percentile: %s\n", formatBytes(results.ResponseTimeStats.P99Size))
+		fmt.Printf("├─ Range: %s - %s\n", formatBytes(results.ResponseTimeStats.MinSize), formatBytes(results.ResponseTimeStats.MaxSize))
+		
+		if len(results.ResponseTimeStats.SlowRequests) > 0 {
+			fmt.Printf("├─ Slowest Endpoints (by size):\n")
+			for i, req := range results.ResponseTimeStats.SlowRequests {
+				if i >= 3 { break } // Show top 3
+				displayURL := req.URL
+				if len(displayURL) > 40 {
+					displayURL = displayURL[:37] + "..."
+				}
+				fmt.Printf("│  ├─ %s: %s\n", displayURL, formatBytes(int64(req.Count)))
+			}
+		}
+		
+		if len(results.ResponseTimeStats.FastRequests) > 0 {
+			fmt.Printf("└─ Fastest Endpoints (by size):\n")
+			for i, req := range results.ResponseTimeStats.FastRequests {
+				if i >= 3 { break } // Show top 3
+				displayURL := req.URL
+				if len(displayURL) > 40 {
+					displayURL = displayURL[:37] + "..."
+				}
+				fmt.Printf("   ├─ %s: %s\n", displayURL, formatBytes(int64(req.Count)))
+			}
+		}
+		fmt.Println()
+	}
+
+	// Geographic Analysis
+	if len(results.GeographicAnalysis.TopCountries) > 0 || results.GeographicAnalysis.LocalTraffic > 0 {
+		fmt.Printf("🌍 Geographic Distribution\n")
+		
+		// Traffic sources breakdown
+		if results.GeographicAnalysis.LocalTraffic > 0 {
+			localPercent := float64(results.GeographicAnalysis.LocalTraffic) / float64(results.TotalRequests) * 100
+			fmt.Printf("├─ Local/Private: %s (%.1f%%)\n", formatNumber(results.GeographicAnalysis.LocalTraffic), localPercent)
+		}
+		if results.GeographicAnalysis.CloudTraffic > 0 {
+			cloudPercent := float64(results.GeographicAnalysis.CloudTraffic) / float64(results.TotalRequests) * 100
+			fmt.Printf("├─ CDN/Cloud: %s (%.1f%%)\n", formatNumber(results.GeographicAnalysis.CloudTraffic), cloudPercent)
+		}
+		if results.GeographicAnalysis.UnknownIPs > 0 {
+			unknownPercent := float64(results.GeographicAnalysis.UnknownIPs) / float64(results.TotalRequests) * 100
+			fmt.Printf("├─ Unknown IPs: %s (%.1f%%)\n", formatNumber(results.GeographicAnalysis.UnknownIPs), unknownPercent)
+		}
+		
+		// Top countries
+		if len(results.GeographicAnalysis.TopCountries) > 0 {
+			fmt.Printf("├─ Countries (%d total):\n", results.GeographicAnalysis.TotalCountries)
+			for i, country := range results.GeographicAnalysis.TopCountries {
+				if i >= 5 { break } // Show top 5 countries
+				percentage := float64(country.Count) / float64(results.TotalRequests) * 100
+				fmt.Printf("│  ├─ %s: %s requests (%.1f%%)\n", country.Country, formatNumber(country.Count), percentage)
+			}
+		}
+		
+		// Top regions (only show in details mode)
+		if showDetails && len(results.GeographicAnalysis.TopRegions) > 0 {
+			fmt.Printf("└─ Regions:\n")
+			for i, region := range results.GeographicAnalysis.TopRegions {
+				if i >= 4 { break } // Show top 4 regions
+				percentage := float64(region.Count) / float64(results.TotalRequests) * 100
+				fmt.Printf("   ├─ %s: %s requests (%.1f%%)\n", region.Country, formatNumber(region.Count), percentage)
+			}
+		}
+		fmt.Println()
+	}
+
 	// HTTP Methods
 	if len(results.HTTPMethods) > 0 {
 		fmt.Printf("🔧 HTTP Methods\n")
@@ -285,6 +360,110 @@ func printResults(results *analyser.Results) {
 			}
 			fmt.Printf("├─ %s: %s\n", displayURL, formatBytes(int64(url.Count))) // Count field contains size
 		}
+		fmt.Println()
+	}
+	
+	// Security Analysis - show when details are requested or threats detected
+	if showDetails || results.SecurityAnalysis.TotalThreats > 0 {
+		threatEmoji := getThreatEmoji(results.SecurityAnalysis.ThreatLevel)
+		fmt.Printf("%s Security Analysis (Threat Level: %s, Score: %d/100)\n", 
+			threatEmoji, 
+			strings.ToUpper(results.SecurityAnalysis.ThreatLevel), 
+			results.SecurityAnalysis.SecurityScore)
+		
+		// Overall security metrics
+		fmt.Printf("├─ Total Threats Detected: %s\n", formatNumber(results.SecurityAnalysis.TotalThreats))
+		fmt.Printf("├─ Suspicious IPs: %s\n", formatNumber(len(results.SecurityAnalysis.SuspiciousIPs)))
+		fmt.Printf("├─ Anomalies Detected: %s\n", formatNumber(len(results.SecurityAnalysis.AnomaliesDetected)))
+		
+		// Attack type breakdown
+		if results.SecurityAnalysis.SQLInjectionAttempts > 0 ||
+		   results.SecurityAnalysis.XSSAttempts > 0 ||
+		   results.SecurityAnalysis.DirectoryTraversal > 0 ||
+		   results.SecurityAnalysis.BruteForceAttempts > 0 ||
+		   results.SecurityAnalysis.ScanningActivity > 0 {
+			fmt.Printf("├─ Attack Breakdown:\n")
+			
+			if results.SecurityAnalysis.SQLInjectionAttempts > 0 {
+				fmt.Printf("│  ├─ SQL Injection: %s attempts\n", formatNumber(results.SecurityAnalysis.SQLInjectionAttempts))
+			}
+			if results.SecurityAnalysis.XSSAttempts > 0 {
+				fmt.Printf("│  ├─ XSS Attempts: %s\n", formatNumber(results.SecurityAnalysis.XSSAttempts))
+			}
+			if results.SecurityAnalysis.DirectoryTraversal > 0 {
+				fmt.Printf("│  ├─ Directory Traversal: %s attempts\n", formatNumber(results.SecurityAnalysis.DirectoryTraversal))
+			}
+			if results.SecurityAnalysis.BruteForceAttempts > 0 {
+				fmt.Printf("│  ├─ Brute Force: %s attempts\n", formatNumber(results.SecurityAnalysis.BruteForceAttempts))
+			}
+			if results.SecurityAnalysis.ScanningActivity > 0 {
+				fmt.Printf("│  ├─ Scanning Activity: %s instances\n", formatNumber(results.SecurityAnalysis.ScanningActivity))
+			}
+		}
+		
+		// Show top attackers
+		if len(results.SecurityAnalysis.TopAttackers) > 0 {
+			fmt.Printf("├─ Top Threat IPs:\n")
+			for i, attacker := range results.SecurityAnalysis.TopAttackers {
+				if i >= 5 { break } // Show top 5 attackers
+				fmt.Printf("│  ├─ %s: %s requests", attacker.IP, formatNumber(attacker.Count))
+				
+				// Find IP details for threat score and categories
+				for _, suspiciousIP := range results.SecurityAnalysis.SuspiciousIPs {
+					if suspiciousIP.IP == attacker.IP {
+						fmt.Printf(" (Score: %d", suspiciousIP.ThreatScore)
+						if len(suspiciousIP.ThreatCategories) > 0 {
+							fmt.Printf(", %s", strings.Join(suspiciousIP.ThreatCategories, ", "))
+						}
+						fmt.Printf(")")
+						break
+					}
+				}
+				fmt.Printf("\n")
+			}
+		}
+		
+		// Show recent high-severity threats in details mode
+		if showDetails && len(results.SecurityAnalysis.ThreatsDetected) > 0 {
+			highSeverityThreats := []analyser.SecurityThreat{}
+			for _, threat := range results.SecurityAnalysis.ThreatsDetected {
+				if threat.Severity == "high" || threat.Severity == "critical" {
+					highSeverityThreats = append(highSeverityThreats, threat)
+				}
+			}
+			
+			if len(highSeverityThreats) > 0 {
+				fmt.Printf("├─ Recent High-Severity Threats:\n")
+				for i, threat := range highSeverityThreats {
+					if i >= 5 { break } // Show top 5 recent threats
+					threatTime := threat.Timestamp.Format("15:04:05")
+					threatType := strings.ReplaceAll(threat.Type, "_", " ")
+					threatType = strings.Title(threatType)
+					
+					fmt.Printf("│  ├─ [%s] %s from %s\n", threatTime, threatType, threat.IP)
+					if len(threat.URL) > 60 {
+						fmt.Printf("│  │   URL: %s...\n", threat.URL[:57])
+					} else {
+						fmt.Printf("│  │   URL: %s\n", threat.URL)
+					}
+					fmt.Printf("│  │   Pattern: %s\n", threat.Pattern)
+				}
+			}
+		}
+		
+		// Show anomalies if detected
+		if len(results.SecurityAnalysis.AnomaliesDetected) > 0 {
+			fmt.Printf("└─ Anomalies Detected:\n")
+			for i, anomaly := range results.SecurityAnalysis.AnomaliesDetected {
+				if i >= 3 { break } // Show top 3 anomalies
+				fmt.Printf("   ├─ %s: %.1f%% (expected %.1f%%, +%.0f%% deviation)\n", 
+					strings.ReplaceAll(anomaly.Description, "_", " "),
+					anomaly.Value, 
+					anomaly.Expected, 
+					anomaly.Deviation)
+			}
+		}
+		
 		fmt.Println()
 	}
 }
@@ -440,4 +619,20 @@ func exportToCSV(results *analyser.Results, filename string) error {
 	}
 	
 	return nil
+}
+
+// Helper function to get emoji for threat level
+func getThreatEmoji(threatLevel string) string {
+	switch strings.ToLower(threatLevel) {
+	case "critical":
+		return "🚨"
+	case "high":
+		return "⚠️ "
+	case "medium":
+		return "🔶"
+	case "low":
+		return "🔐"
+	default:
+		return "🔐"
+	}
 }

@@ -51,6 +51,77 @@ type TrafficPeak struct {
 	Duration     string // Peak duration description
 }
 
+type ResponseTimeStats struct {
+	AverageSize    int64   // Average response size (proxy for response time)
+	MedianSize     int64   // 50th percentile
+	P95Size        int64   // 95th percentile  
+	P99Size        int64   // 99th percentile
+	MinSize        int64   // Smallest response
+	MaxSize        int64   // Largest response
+	SlowRequests   []URLStat // URLs with largest response sizes
+	FastRequests   []URLStat // URLs with smallest response sizes
+}
+
+type GeographicStat struct {
+	Country string
+	Count   int
+	Region  string // Continent/region
+}
+
+type GeographicAnalysis struct {
+	TopCountries     []GeographicStat
+	TopRegions       []GeographicStat
+	TotalCountries   int
+	UnknownIPs       int
+	LocalTraffic     int // Private IP ranges
+	CloudTraffic     int // CDN/Cloud provider IPs
+}
+
+type SecurityThreat struct {
+	Type        string // "sql_injection", "xss", "directory_traversal", "brute_force", etc.
+	Pattern     string // The malicious pattern detected
+	URL         string // The targeted URL
+	IP          string // Source IP
+	Timestamp   time.Time
+	Severity    string // "low", "medium", "high", "critical"
+	UserAgent   string // User agent string
+}
+
+type AnomalyDetection struct {
+	Type          string  // Type of anomaly
+	Description   string  // Human readable description
+	Value         float64 // Actual value
+	Expected      float64 // Expected/baseline value
+	Deviation     float64 // How much it deviates (percentage)
+	Significance  string  // "low", "medium", "high"
+}
+
+type IPThreatAnalysis struct {
+	IP               string
+	RequestCount     int
+	ThreatScore      int    // 0-100 scale
+	ThreatCategories []string // "brute_force", "scanner", "malicious_patterns", etc.
+	FirstSeen        time.Time
+	LastSeen         time.Time
+	UniqueURLs       int
+	ErrorRate        float64 // Percentage of requests resulting in errors
+}
+
+type SecurityAnalysis struct {
+	ThreatLevel          string             // "low", "medium", "high", "critical"
+	SecurityScore        int                // 0-100, higher is better
+	TotalThreats         int
+	ThreatsDetected      []SecurityThreat
+	SuspiciousIPs        []IPThreatAnalysis
+	AnomaliesDetected    []AnomalyDetection
+	BruteForceAttempts   int
+	SQLInjectionAttempts int
+	XSSAttempts          int
+	DirectoryTraversal   int
+	ScanningActivity     int
+	TopAttackers         []IPStat // IPs with most malicious activity
+}
+
 type DetailedStatusCode struct {
 	Code  int
 	Count int
@@ -79,6 +150,9 @@ type Results struct {
 	AverageRequestsPerHour float64
 	PeakHour               int
 	QuietestHour           int
+	ResponseTimeStats      ResponseTimeStats
+	GeographicAnalysis     GeographicAnalysis
+	SecurityAnalysis       SecurityAnalysis
 }
 
 type Analyser struct{}
@@ -114,6 +188,9 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 			AverageRequestsPerHour: 0,
 			PeakHour:               -1,
 			QuietestHour:           -1,
+			ResponseTimeStats:      ResponseTimeStats{},
+			GeographicAnalysis:     GeographicAnalysis{},
+			SecurityAnalysis:       SecurityAnalysis{},
 		}
 	}
 
@@ -121,6 +198,9 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 	hourlyTraffic := a.analyseHourlyTraffic(filtered)
 	trafficPeaks := a.detectTrafficPeaks(hourlyTraffic)
 	avgPerHour, peakHour, quietestHour := a.calculateTrafficStats(hourlyTraffic)
+	responseTimeStats := a.analyseResponseTimes(filtered)
+	geographicAnalysis := a.analyseGeographicDistribution(filtered)
+	securityAnalysis := a.analyseSecurityThreats(filtered)
 	
 	results := &Results{
 		TotalRequests:          len(filtered),
@@ -145,6 +225,9 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 		AverageRequestsPerHour: avgPerHour,
 		PeakHour:               peakHour,
 		QuietestHour:           quietestHour,
+		ResponseTimeStats:      responseTimeStats,
+		GeographicAnalysis:     geographicAnalysis,
+		SecurityAnalysis:       securityAnalysis,
 	}
 
 	return results
@@ -640,6 +723,208 @@ func (a *Analyser) calculateTrafficStats(hourlyTraffic []HourlyTraffic) (float64
 	return avgRequestsPerHour, peakHour, quietestHour
 }
 
+func (a *Analyser) analyseResponseTimes(logs []*parser.LogEntry) ResponseTimeStats {
+	if len(logs) == 0 {
+		return ResponseTimeStats{}
+	}
+	
+	// Collect all response sizes for percentile calculation
+	sizes := make([]int64, len(logs))
+	totalSize := int64(0)
+	minSize := int64(^uint64(0) >> 1) // Max int64
+	maxSize := int64(0)
+	
+	for i, log := range logs {
+		sizes[i] = log.Size
+		totalSize += log.Size
+		
+		if log.Size < minSize {
+			minSize = log.Size
+		}
+		if log.Size > maxSize {
+			maxSize = log.Size
+		}
+	}
+	
+	// Sort sizes for percentile calculation
+	sort.Slice(sizes, func(i, j int) bool {
+		return sizes[i] < sizes[j]
+	})
+	
+	// Calculate percentiles
+	p50Index := len(sizes) * 50 / 100
+	p95Index := len(sizes) * 95 / 100
+	p99Index := len(sizes) * 99 / 100
+	
+	// Ensure indices are within bounds
+	if p50Index >= len(sizes) { p50Index = len(sizes) - 1 }
+	if p95Index >= len(sizes) { p95Index = len(sizes) - 1 }
+	if p99Index >= len(sizes) { p99Index = len(sizes) - 1 }
+	
+	avgSize := totalSize / int64(len(logs))
+	
+	// Find slowest and fastest requests (by size as proxy)
+	slowRequests := a.analyseLargeRequests(logs)  // Reuse existing logic
+	fastRequests := a.analyseSmallRequests(logs)
+	
+	return ResponseTimeStats{
+		AverageSize:  avgSize,
+		MedianSize:   sizes[p50Index],
+		P95Size:      sizes[p95Index],
+		P99Size:      sizes[p99Index],
+		MinSize:      minSize,
+		MaxSize:      maxSize,
+		SlowRequests: slowRequests,
+		FastRequests: fastRequests,
+	}
+}
+
+func (a *Analyser) analyseSmallRequests(logs []*parser.LogEntry) []URLStat {
+	type urlSize struct {
+		url  string
+		size int64
+	}
+	
+	var requests []urlSize
+	for _, log := range logs {
+		requests = append(requests, urlSize{url: log.URL, size: log.Size})
+	}
+	
+	// Sort by size (smallest first)
+	sort.Slice(requests, func(i, j int) bool {
+		return requests[i].size < requests[j].size
+	})
+	
+	// Convert to URLStat format
+	var smallStats []URLStat
+	seen := make(map[string]bool)
+	
+	for _, req := range requests {
+		if !seen[req.url] && len(smallStats) < 10 {
+			smallStats = append(smallStats, URLStat{
+				URL:   req.url,
+				Count: int(req.size), // Store size in count field for display
+			})
+			seen[req.url] = true
+		}
+	}
+	
+	return smallStats
+}
+
+func (a *Analyser) analyseGeographicDistribution(logs []*parser.LogEntry) GeographicAnalysis {
+	countryCounts := make(map[string]int)
+	regionCounts := make(map[string]int)
+	
+	localTraffic := 0
+	cloudTraffic := 0
+	unknownIPs := 0
+	
+	for _, log := range logs {
+		country, region := a.getIPLocation(log.IP)
+		
+		if country == "Local" {
+			localTraffic++
+		} else if country == "Cloud" {
+			cloudTraffic++
+		} else if country == "Unknown" {
+			unknownIPs++
+		} else {
+			countryCounts[country]++
+			regionCounts[region]++
+		}
+	}
+	
+	// Convert to sorted slices
+	var topCountries []GeographicStat
+	for country, count := range countryCounts {
+		topCountries = append(topCountries, GeographicStat{
+			Country: country,
+			Count:   count,
+			Region:  a.getRegionForCountry(country),
+		})
+	}
+	
+	var topRegions []GeographicStat
+	for region, count := range regionCounts {
+		topRegions = append(topRegions, GeographicStat{
+			Country: region,
+			Count:   count,
+			Region:  region,
+		})
+	}
+	
+	// Sort by count
+	sort.Slice(topCountries, func(i, j int) bool {
+		return topCountries[i].Count > topCountries[j].Count
+	})
+	
+	sort.Slice(topRegions, func(i, j int) bool {
+		return topRegions[i].Count > topRegions[j].Count
+	})
+	
+	return GeographicAnalysis{
+		TopCountries:   topCountries,
+		TopRegions:     topRegions,
+		TotalCountries: len(countryCounts),
+		UnknownIPs:     unknownIPs,
+		LocalTraffic:   localTraffic,
+		CloudTraffic:   cloudTraffic,
+	}
+}
+
+func (a *Analyser) getIPLocation(ip string) (string, string) {
+	// Simple IP-based location detection using common patterns
+	
+	// Private IP ranges
+	if strings.HasPrefix(ip, "192.168.") || 
+	   strings.HasPrefix(ip, "10.") || 
+	   strings.HasPrefix(ip, "172.") {
+		return "Local", "Private Network"
+	}
+	
+	// Common cloud/CDN providers (based on known ranges)
+	if strings.HasPrefix(ip, "172.69.") || strings.HasPrefix(ip, "172.71.") ||
+	   strings.HasPrefix(ip, "162.158.") || strings.HasPrefix(ip, "104.") {
+		return "Cloud", "CDN/Cloud"
+	}
+	
+	// Simple geographic patterns (very basic, real implementation would use GeoIP database)
+	switch {
+	case strings.HasPrefix(ip, "203."):
+		return "Australia/NZ", "Oceania"
+	case strings.HasPrefix(ip, "202."):
+		return "Asia", "Asia"
+	case strings.HasPrefix(ip, "80.") || strings.HasPrefix(ip, "81."):
+		return "Europe", "Europe"
+	case strings.HasPrefix(ip, "24.") || strings.HasPrefix(ip, "76."):
+		return "United States", "North America"
+	case strings.HasPrefix(ip, "201."):
+		return "Brazil", "South America"
+	default:
+		return "Unknown", "Unknown"
+	}
+}
+
+func (a *Analyser) getRegionForCountry(country string) string {
+	switch country {
+	case "United States", "Canada", "Mexico":
+		return "North America"
+	case "Brazil", "Argentina", "Chile":
+		return "South America"
+	case "Germany", "France", "UK", "Spain", "Italy":
+		return "Europe"
+	case "China", "Japan", "India", "Korea", "Asia":
+		return "Asia"
+	case "Australia/NZ", "Australia", "New Zealand":
+		return "Oceania"
+	case "South Africa", "Nigeria", "Egypt":
+		return "Africa"
+	default:
+		return "Unknown"
+	}
+}
+
 func getStatusClass(status int) string {
 	switch {
 	case status >= 200 && status < 300:
@@ -653,4 +938,448 @@ func getStatusClass(status int) string {
 	default:
 		return "1xx Informational"
 	}
+}
+
+// Security Analysis Methods
+func (a *Analyser) analyseSecurityThreats(logs []*parser.LogEntry) SecurityAnalysis {
+	var threats []SecurityThreat
+	var suspiciousIPs []IPThreatAnalysis
+	var anomalies []AnomalyDetection
+	
+	// Counters for different attack types
+	sqlInjection := 0
+	xssAttempts := 0
+	directoryTraversal := 0
+	bruteForce := 0
+	scanningActivity := 0
+	
+	// Track IP behavior for threat analysis
+	ipStats := make(map[string]*IPThreatAnalysis)
+	
+	// Analyze each log entry for security threats
+	for _, log := range logs {
+		// Initialize IP stats if not exists
+		if _, exists := ipStats[log.IP]; !exists {
+			ipStats[log.IP] = &IPThreatAnalysis{
+				IP:               log.IP,
+				RequestCount:     0,
+				ThreatScore:      0,
+				ThreatCategories: []string{},
+				FirstSeen:        log.Timestamp,
+				LastSeen:         log.Timestamp,
+				UniqueURLs:       0,
+				ErrorRate:        0,
+			}
+		}
+		
+		ipStat := ipStats[log.IP]
+		ipStat.RequestCount++
+		ipStat.LastSeen = log.Timestamp
+		
+		// Check for SQL injection patterns
+		if a.detectSQLInjection(log.URL) {
+			threats = append(threats, SecurityThreat{
+				Type:      "sql_injection",
+				Pattern:   a.extractSQLPattern(log.URL),
+				URL:       log.URL,
+				IP:        log.IP,
+				Timestamp: log.Timestamp,
+				Severity:  "high",
+				UserAgent: log.UserAgent,
+			})
+			sqlInjection++
+			a.updateThreatScore(ipStat, "sql_injection", 30)
+		}
+		
+		// Check for XSS attempts
+		if a.detectXSS(log.URL) {
+			threats = append(threats, SecurityThreat{
+				Type:      "xss",
+				Pattern:   a.extractXSSPattern(log.URL),
+				URL:       log.URL,
+				IP:        log.IP,
+				Timestamp: log.Timestamp,
+				Severity:  "medium",
+				UserAgent: log.UserAgent,
+			})
+			xssAttempts++
+			a.updateThreatScore(ipStat, "xss", 20)
+		}
+		
+		// Check for directory traversal
+		if a.detectDirectoryTraversal(log.URL) {
+			threats = append(threats, SecurityThreat{
+				Type:      "directory_traversal",
+				Pattern:   a.extractTraversalPattern(log.URL),
+				URL:       log.URL,
+				IP:        log.IP,
+				Timestamp: log.Timestamp,
+				Severity:  "high",
+				UserAgent: log.UserAgent,
+			})
+			directoryTraversal++
+			a.updateThreatScore(ipStat, "directory_traversal", 25)
+		}
+		
+		// Check for brute force attempts (multiple failed logins)
+		if a.detectBruteForce(log.URL, log.Status) {
+			bruteForce++
+			a.updateThreatScore(ipStat, "brute_force", 15)
+		}
+		
+		// Check for scanning activity
+		if a.detectScanning(log.UserAgent, log.URL) {
+			scanningActivity++
+			a.updateThreatScore(ipStat, "scanner", 10)
+		}
+		
+		// Track error rates for IP reputation
+		if log.Status >= 400 {
+			// Will calculate error rate later
+		}
+	}
+	
+	// Calculate IP threat scores and error rates
+	for ip, stat := range ipStats {
+		errorCount := 0
+		uniqueURLs := make(map[string]bool)
+		
+		for _, log := range logs {
+			if log.IP == ip {
+				uniqueURLs[log.URL] = true
+				if log.Status >= 400 {
+					errorCount++
+				}
+			}
+		}
+		
+		stat.UniqueURLs = len(uniqueURLs)
+		if stat.RequestCount > 0 {
+			stat.ErrorRate = float64(errorCount) / float64(stat.RequestCount) * 100
+		}
+		
+		// Only include IPs with suspicious activity
+		if stat.ThreatScore > 0 {
+			suspiciousIPs = append(suspiciousIPs, *stat)
+		}
+	}
+	
+	// Sort suspicious IPs by threat score
+	sort.Slice(suspiciousIPs, func(i, j int) bool {
+		return suspiciousIPs[i].ThreatScore > suspiciousIPs[j].ThreatScore
+	})
+	
+	// Generate anomaly detection
+	anomalies = a.detectAnomalies(logs)
+	
+	// Calculate overall threat level and security score
+	threatLevel := a.calculateThreatLevel(threats, suspiciousIPs)
+	securityScore := a.calculateSecurityScore(len(logs), len(threats), len(suspiciousIPs))
+	
+	// Create top attackers list
+	topAttackers := []IPStat{}
+	for i, ip := range suspiciousIPs {
+		if i >= 10 { // Top 10 attackers
+			break
+		}
+		topAttackers = append(topAttackers, IPStat{
+			IP:    ip.IP,
+			Count: ip.RequestCount,
+		})
+	}
+	
+	return SecurityAnalysis{
+		ThreatLevel:          threatLevel,
+		SecurityScore:        securityScore,
+		TotalThreats:         len(threats),
+		ThreatsDetected:      threats,
+		SuspiciousIPs:        suspiciousIPs,
+		AnomaliesDetected:    anomalies,
+		BruteForceAttempts:   bruteForce,
+		SQLInjectionAttempts: sqlInjection,
+		XSSAttempts:          xssAttempts,
+		DirectoryTraversal:   directoryTraversal,
+		ScanningActivity:     scanningActivity,
+		TopAttackers:         topAttackers,
+	}
+}
+
+// Attack pattern detection methods
+func (a *Analyser) detectSQLInjection(url string) bool {
+	sqlPatterns := []string{
+		"'", "\"", ";", "--", "/*", "*/",
+		"union", "select", "insert", "update", "delete", "drop",
+		"exec", "execute", "sp_", "xp_",
+		"or 1=1", "or 1=1--", "or 'a'='a", "1' or '1'='1",
+		"admin'--", "admin'/*", "' or 1=1#", "' or 1=1--",
+	}
+	
+	urlLower := strings.ToLower(url)
+	for _, pattern := range sqlPatterns {
+		if strings.Contains(urlLower, strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Analyser) detectXSS(url string) bool {
+	xssPatterns := []string{
+		"<script", "</script>", "javascript:", "vbscript:",
+		"onload=", "onerror=", "onclick=", "onmouseover=",
+		"<img", "<iframe", "<object", "<embed",
+		"alert(", "document.cookie", "document.write",
+		"eval(", "setTimeout(", "setInterval(",
+	}
+	
+	urlLower := strings.ToLower(url)
+	for _, pattern := range xssPatterns {
+		if strings.Contains(urlLower, strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Analyser) detectDirectoryTraversal(url string) bool {
+	traversalPatterns := []string{
+		"../", "..\\", "....//", "....\\\\",
+		"%2e%2e/", "%2e%2e\\", "%2e%2e%2f", "%2e%2e%5c",
+		"..%2f", "..%5c", "..\\/", "../\\",
+		"/etc/passwd", "/etc/shadow", "\\windows\\system32",
+		"boot.ini", "win.ini",
+	}
+	
+	urlLower := strings.ToLower(url)
+	for _, pattern := range traversalPatterns {
+		if strings.Contains(urlLower, strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Analyser) detectBruteForce(url string, status int) bool {
+	// Look for login/admin URLs with failed status codes
+	loginPaths := []string{
+		"login", "admin", "signin", "auth", "wp-admin",
+		"administrator", "panel", "dashboard",
+	}
+	
+	urlLower := strings.ToLower(url)
+	for _, path := range loginPaths {
+		if strings.Contains(urlLower, path) && (status == 401 || status == 403 || status == 404) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Analyser) detectScanning(userAgent string, url string) bool {
+	scannerPatterns := []string{
+		"nmap", "nikto", "sqlmap", "burp", "owasp zap",
+		"nessus", "openvas", "acunetix", "qualys",
+		"masscan", "zap", "w3af", "skipfish",
+		"gobuster", "dirb", "dirbuster", "wfuzz",
+	}
+	
+	agentLower := strings.ToLower(userAgent)
+	for _, pattern := range scannerPatterns {
+		if strings.Contains(agentLower, pattern) {
+			return true
+		}
+	}
+	
+	// Check for common scanning URLs
+	scanUrls := []string{
+		"/admin", "/test", "/backup", "/.git", "/.svn",
+		"/config", "/database", "/db", "/phpmyadmin",
+		"/wp-config", "/robots.txt", "/sitemap.xml",
+	}
+	
+	urlLower := strings.ToLower(url)
+	for _, scanUrl := range scanUrls {
+		if strings.Contains(urlLower, scanUrl) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// Helper methods for pattern extraction
+func (a *Analyser) extractSQLPattern(url string) string {
+	if strings.Contains(strings.ToLower(url), "union") {
+		return "UNION-based injection"
+	}
+	if strings.Contains(url, "' or 1=1") {
+		return "Boolean-based injection"
+	}
+	if strings.Contains(url, "'--") || strings.Contains(url, "'/*") {
+		return "Comment-based injection"
+	}
+	return "Generic SQL injection pattern"
+}
+
+func (a *Analyser) extractXSSPattern(url string) string {
+	if strings.Contains(strings.ToLower(url), "script") {
+		return "Script injection"
+	}
+	if strings.Contains(strings.ToLower(url), "javascript:") {
+		return "JavaScript protocol"
+	}
+	if strings.Contains(strings.ToLower(url), "onerror") || strings.Contains(strings.ToLower(url), "onload") {
+		return "Event handler injection"
+	}
+	return "Generic XSS pattern"
+}
+
+func (a *Analyser) extractTraversalPattern(url string) string {
+	if strings.Contains(url, "../") {
+		return "Unix-style traversal (../)"
+	}
+	if strings.Contains(url, "..\\") {
+		return "Windows-style traversal (..\\)"
+	}
+	if strings.Contains(url, "%2e%2e") {
+		return "URL-encoded traversal"
+	}
+	return "Generic directory traversal"
+}
+
+// Threat scoring and reputation
+func (a *Analyser) updateThreatScore(ipStat *IPThreatAnalysis, threatType string, score int) {
+	ipStat.ThreatScore += score
+	
+	// Add threat category if not already present
+	found := false
+	for _, category := range ipStat.ThreatCategories {
+		if category == threatType {
+			found = true
+			break
+		}
+	}
+	if !found {
+		ipStat.ThreatCategories = append(ipStat.ThreatCategories, threatType)
+	}
+}
+
+// Anomaly detection
+func (a *Analyser) detectAnomalies(logs []*parser.LogEntry) []AnomalyDetection {
+	var anomalies []AnomalyDetection
+	
+	if len(logs) == 0 {
+		return anomalies
+	}
+	
+	// Calculate baseline metrics
+	totalRequests := len(logs)
+	errorCount := 0
+	statusCodes := make(map[int]int)
+	
+	for _, log := range logs {
+		statusCodes[log.Status]++
+		if log.Status >= 400 {
+			errorCount++
+		}
+	}
+	
+	// Check for anomalous error rates
+	errorRate := float64(errorCount) / float64(totalRequests) * 100
+	expectedErrorRate := 5.0 // 5% is typical baseline
+	
+	if errorRate > expectedErrorRate*2 { // 2x expected rate
+		anomalies = append(anomalies, AnomalyDetection{
+			Type:          "high_error_rate",
+			Description:   "Unusually high error rate detected",
+			Value:         errorRate,
+			Expected:      expectedErrorRate,
+			Deviation:     (errorRate - expectedErrorRate) / expectedErrorRate * 100,
+			Significance:  a.getSignificance(errorRate, expectedErrorRate, 2.0),
+		})
+	}
+	
+	// Check for anomalous 404 rates
+	notFoundCount := statusCodes[404]
+	notFoundRate := float64(notFoundCount) / float64(totalRequests) * 100
+	expectedNotFoundRate := 2.0 // 2% is typical
+	
+	if notFoundRate > expectedNotFoundRate*3 {
+		anomalies = append(anomalies, AnomalyDetection{
+			Type:          "high_404_rate",
+			Description:   "Unusually high 404 Not Found rate - possible scanning activity",
+			Value:         notFoundRate,
+			Expected:      expectedNotFoundRate,
+			Deviation:     (notFoundRate - expectedNotFoundRate) / expectedNotFoundRate * 100,
+			Significance:  a.getSignificance(notFoundRate, expectedNotFoundRate, 3.0),
+		})
+	}
+	
+	return anomalies
+}
+
+func (a *Analyser) getSignificance(actual, expected, threshold float64) string {
+	ratio := actual / expected
+	if ratio > threshold*2 {
+		return "high"
+	} else if ratio > threshold*1.5 {
+		return "medium"
+	}
+	return "low"
+}
+
+// Calculate overall threat level and security score
+func (a *Analyser) calculateThreatLevel(threats []SecurityThreat, suspiciousIPs []IPThreatAnalysis) string {
+	highSeverityCount := 0
+	mediumSeverityCount := 0
+	
+	for _, threat := range threats {
+		switch threat.Severity {
+		case "critical", "high":
+			highSeverityCount++
+		case "medium":
+			mediumSeverityCount++
+		}
+	}
+	
+	topThreatIPs := 0
+	for _, ip := range suspiciousIPs {
+		if ip.ThreatScore > 50 {
+			topThreatIPs++
+		}
+	}
+	
+	if highSeverityCount > 10 || topThreatIPs > 5 {
+		return "critical"
+	} else if highSeverityCount > 5 || mediumSeverityCount > 10 || topThreatIPs > 2 {
+		return "high"
+	} else if highSeverityCount > 0 || mediumSeverityCount > 0 || topThreatIPs > 0 {
+		return "medium"
+	}
+	
+	return "low"
+}
+
+func (a *Analyser) calculateSecurityScore(totalRequests, threatCount, suspiciousIPCount int) int {
+	if totalRequests == 0 {
+		return 100
+	}
+	
+	// Start with perfect score
+	score := 100
+	
+	// Deduct points for threats
+	threatRate := float64(threatCount) / float64(totalRequests) * 100
+	score -= int(threatRate * 2) // Each 1% threat rate costs 2 points
+	
+	// Deduct points for suspicious IPs
+	suspiciousRate := float64(suspiciousIPCount) / float64(totalRequests) * 100
+	score -= int(suspiciousRate * 1.5) // Each 1% suspicious IP rate costs 1.5 points
+	
+	// Minimum score is 0
+	if score < 0 {
+		score = 0
+	}
+	
+	return score
 }

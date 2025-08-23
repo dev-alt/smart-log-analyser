@@ -2,9 +2,12 @@ package parser
 
 import (
 	"bufio"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,8 +48,24 @@ func (p *Parser) ParseFile(filename string) ([]*LogEntry, error) {
 	}
 	defer file.Close()
 
+	// Create a reader that handles compressed files
+	reader, err := p.createReader(file, filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create reader for %s: %w", filename, err)
+	}
+	defer func() {
+		if closer, ok := reader.(io.Closer); ok {
+			closer.Close()
+		}
+	}()
+
 	var entries []*LogEntry
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
+	
+	// Increase buffer size for potentially large compressed files
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024) // 1MB buffer
+	
 	lineNum := 0
 
 	for scanner.Scan() {
@@ -59,7 +78,7 @@ func (p *Parser) ParseFile(filename string) ([]*LogEntry, error) {
 
 		entry, err := p.ParseLine(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to parse line %d: %v\n", lineNum, err)
+			fmt.Fprintf(os.Stderr, "Warning: failed to parse line %d in %s: %v\n", lineNum, filepath.Base(filename), err)
 			continue
 		}
 
@@ -67,10 +86,41 @@ func (p *Parser) ParseFile(filename string) ([]*LogEntry, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
+		return nil, fmt.Errorf("error reading file %s: %w", filename, err)
 	}
 
 	return entries, nil
+}
+
+// createReader creates appropriate reader based on file extension
+func (p *Parser) createReader(file *os.File, filename string) (io.Reader, error) {
+	ext := strings.ToLower(filepath.Ext(filename))
+	
+	switch ext {
+	case ".gz":
+		gzReader, err := gzip.NewReader(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		return gzReader, nil
+	case ".log":
+		// Regular log file
+		return file, nil
+	default:
+		// Check if it's a numbered log file (like .log.1, .log.2, etc.)
+		if p.isRotatedLogFile(filename) {
+			return file, nil
+		}
+		// For files without extension or unknown extensions, treat as regular text
+		return file, nil
+	}
+}
+
+// isRotatedLogFile checks if filename matches rotated log pattern
+func (p *Parser) isRotatedLogFile(filename string) bool {
+	// Match patterns like: access.log.1, error.log.12, nzlmra.nz.access.log.5, etc.
+	rotatedPattern := regexp.MustCompile(`\.(log|access|error)(\.\d+)?$`)
+	return rotatedPattern.MatchString(strings.ToLower(filename))
 }
 
 func (p *Parser) ParseLine(line string) (*LogEntry, error) {

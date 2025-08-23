@@ -1,0 +1,101 @@
+Section,Metric,Value,Percentage
+Overview,Total Requests,996,100.0
+Overview,Unique IPs,563,
+Overview,Unique URLs,942,
+Overview,Total Bytes,30880697,
+Overview,Average Size,31004,
+Overview,Human Requests,429,43.1
+Overview,Bot Requests,567,56.9
+Status Codes,2xx Success,938,94.2
+Status Codes,3xx Redirect,30,3.0
+Status Codes,4xx Client Error,18,1.8
+Status Codes,5xx Server Error,10,1.0
+Detailed Status,200,938,94.2
+Detailed Status,304,18,1.8
+Detailed Status,404,16,1.6
+Detailed Status,301,12,1.2
+Detailed Status,500,10,1.0
+Detailed Status,499,2,0.2
+Top IPs,172.69.234.173,39,3.9
+Top IPs,172.69.234.160,33,3.3
+Top IPs,172.69.234.150,28,2.8
+Top IPs,172.69.234.161,26,2.6
+Top IPs,172.69.234.151,26,2.6
+Top IPs,172.69.234.162,23,2.3
+Top IPs,162.158.222.9,22,2.2
+Top IPs,172.71.123.2,21,2.1
+Top IPs,172.69.234.172,20,2.0
+Top IPs,172.69.234.163,20,2.0
+Top IPs,172.69.130.10,8,0.8
+Top IPs,172.71.23.88,6,0.6
+Top IPs,172.70.80.90,6,0.6
+Top IPs,172.70.80.160,5,0.5
+Top IPs,162.158.120.230,5,0.5
+Top IPs,104.23.213.8,5,0.5
+Top IPs,172.70.80.192,5,0.5
+Top IPs,172.69.130.250,5,0.5
+Top IPs,172.70.80.193,5,0.5
+Top IPs,172.70.80.91,5,0.5
+Top URLs,/,29,2.9
+Top URLs,/robots.txt,10,1.0
+Top URLs,/rules/build-regulations/,4,0.4
+Top URLs,/category/clubs/,3,0.3
+Top URLs,/events/,2,0.2
+Top URLs,/mower-classes/,2,0.2
+Top URLs,/wp-content/boost-cache/static/967f235d9d.min.css,2,0.2
+Top URLs,/events/list/page/2/?tribe-bar-date=2026-01-07,2,0.2
+Top URLs,/wp-content/plugins/event-tickets/common/build/js/underscore-before.js,2,0.2
+Top URLs,/wp-content/plugins/event-tickets/common/build/js/underscore-after.js,2,0.2
+Top URLs,/page/5/?eventDate=2023-11-11&eventDisplay=day&post_type=tribe_events,2,0.2
+Top URLs,/wp-includes/js/underscore.min.js?ver=1.13.7,2,0.2
+Top URLs,/wp-content/plugins/w3-total-cache/pub/js/lazyload.min.js,2,0.2
+Top URLs,/rules/racing-rules/,2,0.2
+Top URLs,/wp-includes/js/wp-emoji-release.min.js?ver=fc7f6aa74e1916537895e66d38228dab,2,0.2
+Top URLs,/wp-includes/css/dashicons.min.css?ver=fc7f6aa74e1916537895e66d38228dab,2,0.2
+Top URLs,/event/hawkes-bay-mower-racing-club-event/,1,0.1
+Top URLs,/page/5/?eventDate=2024-09-14&eventDisplay=day&post_type=tribe_events,1,0.1
+Top URLs,/wp-cron.php?doing_wp_cron=1755909293.4894189834594726562500,1,0.1
+Top URLs,/wp-cron.php?doing_wp_cron=1755908857.3137440681457519531250,1,0.1
+Top Bots,Unknown Bot,511,51.3
+Top Bots,Uptime Monitor,23,2.3
+Top Bots,Googlebot,23,2.3
+Top Bots,Bingbot,8,0.8
+Top Bots,Facebook Bot,2,0.2
+File Types,Dynamic/HTML,910,91.4
+File Types Size,Dynamic/HTML Total,15912456,
+File Types Size,Dynamic/HTML Average,17486,
+File Types,CSS,45,4.5
+File Types Size,CSS Total,13574040,
+File Types Size,CSS Average,301645,
+File Types,JavaScript,21,2.1
+File Types Size,JavaScript Total,464384,
+File Types Size,JavaScript Average,22113,
+File Types,Text Files,10,1.0
+File Types Size,Text Files Total,8736,
+File Types Size,Text Files Average,873,
+File Types,Images,6,0.6
+File Types Size,Images Total,917777,
+File Types Size,Images Average,152962,
+File Types,Fonts,4,0.4
+File Types Size,Fonts Total,3304,
+File Types Size,Fonts Average,826,
+Error URLs,/robots.txt,3,
+Error URLs,/,2,
+Error URLs,/phpinfo,1,
+Error URLs,/page/3/?eventDate=2022-11-03&eventDisplay=day&post_type=tribe_events,1,
+Error URLs,/favicon.ico,1,
+Error URLs,/events/list/page/2/?tribe-bar-date=2025-08-02,1,
+Error URLs,/php_info.php,1,
+Error URLs,/.env,1,
+Error URLs,/dev/.env,1,
+Error URLs,/phpinfo.php,1,
+Large Requests,/wp-content/uploads/2022/10/281355949_4804603076334167_5836036589260985506_n.jpg?w=640,913632,
+Large Requests,/wp-content/boost-cache/static/9a38ac0284.min.css,464449,
+Large Requests,/wp-content/boost-cache/static/99ed6368e3.min.css,460511,
+Large Requests,/wp-content/boost-cache/static/8072ab884d.min.css,460511,
+Large Requests,/wp-content/boost-cache/static/942b2b9ca9.min.css,440520,
+Large Requests,/wp-content/boost-cache/static/c0a055b2bd.min.css,389811,
+Large Requests,/wp-content/boost-cache/static/fe4003c248.min.css,387636,
+Large Requests,/wp-content/boost-cache/static/173fb4476e.min.css,387636,
+Large Requests,/wp-content/boost-cache/static/3764711d29.min.css,387636,
+Large Requests,/wp-content/boost-cache/static/f03b25ec5c.min.css,387636,
