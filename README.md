@@ -37,6 +37,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 
 ### Phase 3 (Advanced Analytics) 🚀
 - [x] **HTML report generation with embedded charts** (Interactive reports with Chart.js visualizations)
+- [x] **Interactive menu system** (User-friendly guided interface with dual-mode operation)
 - [ ] Historical trend analysis (compare periods, track degradation)
 - [ ] ASCII charts and terminal visualizations
 - [ ] Advanced query language for complex filtering

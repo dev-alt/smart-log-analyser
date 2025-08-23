@@ -152,6 +152,8 @@ smart-log-analyser/
 - **Installation and setup** instructions
 - **Command line options** documentation
 - **Security notes** section
+- **Interactive mode documentation** for menu-driven workflows
+- **HTML report examples** with browser integration instructions
 
 ### Code Documentation:
 - **Clear function comments** for exported functions
