@@ -89,17 +89,22 @@ git log --oneline -3
 - ❌ SSH private keys (id_rsa, id_ed25519, *.pem, *.key)
 - ❌ Passwords or API keys in any format
 - ❌ Real server IPs, hostnames, or connection details
+- ❌ **REAL DOMAIN NAMES** - Never commit actual website domains
+- ❌ **SPECIFIC IP ADDRESSES** - Never commit production server IPs
 - ❌ SSL certificates or credential files
 - ❌ Real log files with production data
 - ❌ Environment files with real values (.env)
 - ❌ Database connection strings
 - ❌ Any file containing "password", "secret", "key", "token"
+- ❌ **CLIENT/CUSTOMER IDENTIFIERS** - Never expose client-specific information
 
 ### Always Use:
 - ✅ Example files with placeholder values
 - ✅ Template configurations (servers.json.example)
 - ✅ Environment variable references
-- ✅ Localhost/example.com for examples
+- ✅ **GENERIC DOMAINS**: example.com, test.com, sample-site.com
+- ✅ **PRIVATE IP RANGES**: 192.168.1.100, 10.0.0.50, 127.0.0.1
+- ✅ **PLACEHOLDER PATHS**: server-logs/access.log, /path/to/logs/
 - ✅ Dummy/test credentials in documentation
 - ✅ Clear security warnings in README
 
@@ -181,6 +186,36 @@ smart-log-analyser/
 - Updated .gitignore for new patterns
 - Added security warnings to docs
 ```
+
+### Documentation Security Guidelines
+
+**Critical Rule: ALL examples in documentation MUST use generic placeholders**
+
+#### ✅ Safe Documentation Examples:
+```bash
+# Safe command examples
+./smart-log-analyser analyse server-logs/access.log --details
+./smart-log-analyser download --server example.com
+./smart-log-analyser analyse /var/log/nginx/access.log --export-html=report.html
+
+# Safe configuration examples  
+"host": "your-server.com"
+"host": "192.168.1.100" 
+"log_path": "/path/to/logs/access.log"
+```
+
+#### ❌ Dangerous Documentation Examples:
+```bash
+# NEVER include real domains or IPs in documentation
+./smart-log-analyser analyse downloads/realsite.com_logs.log  # ❌ Real domain
+./smart-log-analyser download --server 123.456.78.90          # ❌ Real IP
+```
+
+#### Development Log Security:
+- **User Requests**: Sanitize user quotes to remove sensitive data before documenting
+- **Command Examples**: Always use placeholder paths and generic domains
+- **Error Messages**: Redact any real server information from logged errors
+- **File Paths**: Use generic paths like `server-logs/` instead of real timestamps/hostnames
 
 ---
 
