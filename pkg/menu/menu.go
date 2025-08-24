@@ -118,13 +118,23 @@ func (m *Menu) handleLocalAnalysis() error {
 	
 	switch choice {
 	case 1:
-		files = m.findLogFiles(".")
+		files = m.findLogFilesIntelligent()
 		if len(files) == 0 {
-			fmt.Println("❌ No log files found in current directory")
+			fmt.Println("❌ No log files found in common locations")
+			fmt.Println("   Searched: ./downloads/, ./logs/, current directory")
 			m.pause()
 			return nil
 		}
-		fmt.Printf("📁 Found %d log files: %v\n", len(files), files)
+		location := m.getSourceLocation(files)
+		fmt.Printf("📁 Found %d log files in %s\n", len(files), location)
+		for i, file := range files {
+			if i < 5 { // Show first 5 files
+				fmt.Printf("  • %s\n", filepath.Base(file))
+			} else if i == 5 {
+				fmt.Printf("  • ... and %d more files\n", len(files)-5)
+				break
+			}
+		}
 		
 	case 2:
 		files, err = m.selectLogFiles()
@@ -394,4 +404,46 @@ func (m *Menu) findLogFiles(dir string) []string {
 	}
 	
 	return files
+}
+
+// findLogFilesIntelligent searches for log files in common locations
+func (m *Menu) findLogFilesIntelligent() []string {
+	// Priority order for searching log files
+	searchDirs := []string{
+		"./downloads/",
+		"./logs/",
+		".",
+	}
+	
+	for _, dir := range searchDirs {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			continue // Directory doesn't exist, skip
+		}
+		
+		files := m.findLogFiles(dir)
+		if len(files) > 0 {
+			return files
+		}
+	}
+	
+	return []string{}
+}
+
+// getSourceLocation returns the directory name where files were found
+func (m *Menu) getSourceLocation(files []string) string {
+	if len(files) == 0 {
+		return "unknown"
+	}
+	
+	dir := filepath.Dir(files[0])
+	switch dir {
+	case "./downloads", "downloads":
+		return "downloads folder"
+	case "./logs", "logs":
+		return "logs folder"
+	case ".":
+		return "current directory"
+	default:
+		return fmt.Sprintf("%s directory", dir)
+	}
 }
