@@ -129,6 +129,8 @@ Analysis Results → HTML Generator → Template Engine → Static HTML File
 - Mobile responsive design
 - Graceful degradation for older browsers
 - Print stylesheet for PDF generation
+- Chart.js UMD version for compatibility with script tags
+- Fixed chart dimensions to prevent excessive growth
 
 ## Performance Targets
 - HTML generation: < 2 seconds

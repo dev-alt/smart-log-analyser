@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -616,7 +618,50 @@ func (m *Menu) viewConfiguration() error {
 
 func (m *Menu) openInBrowser(filename string) {
 	fmt.Printf("🌐 Opening %s in default browser...\n", filename)
-	// Implementation would use system-specific commands to open browser
+	
+	// Get absolute path
+	absPath, err := filepath.Abs(filename)
+	if err != nil {
+		fmt.Printf("❌ Error getting absolute path: %v\n", err)
+		return
+	}
+	
+	// Convert to file:// URL
+	fileURL := "file://" + absPath
+	
+	// Try different commands based on OS
+	var cmd *exec.Cmd
+	
+	// Detect OS and use appropriate command
+	switch runtime.GOOS {
+	case "linux":
+		// Try xdg-open first, fallback to common browsers
+		if _, err := exec.LookPath("xdg-open"); err == nil {
+			cmd = exec.Command("xdg-open", fileURL)
+		} else if _, err := exec.LookPath("google-chrome"); err == nil {
+			cmd = exec.Command("google-chrome", fileURL)
+		} else if _, err := exec.LookPath("firefox"); err == nil {
+			cmd = exec.Command("firefox", fileURL)
+		}
+	case "darwin":
+		cmd = exec.Command("open", fileURL)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", fileURL)
+	}
+	
+	if cmd == nil {
+		fmt.Printf("❌ Unable to find browser command for your system\n")
+		fmt.Printf("📂 Please manually open: %s\n", fileURL)
+		return
+	}
+	
+	// Execute command
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("❌ Failed to open browser: %v\n", err)
+		fmt.Printf("📂 Please manually open: %s\n", fileURL)
+	} else {
+		fmt.Printf("✅ Browser opened successfully\n")
+	}
 }
 
 func formatFileSize(size int64) string {

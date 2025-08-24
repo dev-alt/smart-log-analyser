@@ -175,21 +175,40 @@ func (g *Generator) transformResults(results *analyser.Results, title string) *R
 		hourlyData = append(hourlyData, hourly.RequestCount)
 	}
 
-	// Prepare status code data from map
-	statusLabels := []string{"2xx Success", "3xx Redirect", "4xx Client Error", "5xx Server Error"}
-	statusData := []int{
-		getStatusCodeCount(results.StatusCodes, "2xx"),
-		getStatusCodeCount(results.StatusCodes, "3xx"),
-		getStatusCodeCount(results.StatusCodes, "4xx"),
-		getStatusCodeCount(results.StatusCodes, "5xx"),
+	// Prepare status code data from map (only include non-zero values)
+	statusLabels := make([]string, 0)
+	statusData := make([]int, 0)
+	
+	statusCategories := map[string]string{
+		"2": "2xx Success",
+		"3": "3xx Redirect", 
+		"4": "4xx Client Error",
+		"5": "5xx Server Error",
+	}
+	
+	for code, label := range statusCategories {
+		count := getStatusCodeCount(results.StatusCodes, code+"xx")
+		if count > 0 {
+			statusLabels = append(statusLabels, label)
+			statusData = append(statusData, count)
+		}
 	}
 
-	// Prepare geographic data
-	geoLabels := []string{"Local/Private", "CDN/Cloud", "Unknown"}
-	geoData := []int{
-		results.GeographicAnalysis.LocalTraffic,
-		results.GeographicAnalysis.CloudTraffic,
-		results.GeographicAnalysis.UnknownIPs,
+	// Prepare geographic data (only include non-zero values)
+	geoLabels := make([]string, 0)
+	geoData := make([]int, 0)
+	
+	if results.GeographicAnalysis.LocalTraffic > 0 {
+		geoLabels = append(geoLabels, "Local/Private")
+		geoData = append(geoData, results.GeographicAnalysis.LocalTraffic)
+	}
+	if results.GeographicAnalysis.CloudTraffic > 0 {
+		geoLabels = append(geoLabels, "CDN/Cloud") 
+		geoData = append(geoData, results.GeographicAnalysis.CloudTraffic)
+	}
+	if results.GeographicAnalysis.UnknownIPs > 0 {
+		geoLabels = append(geoLabels, "Unknown")
+		geoData = append(geoData, results.GeographicAnalysis.UnknownIPs)
 	}
 
 	// Prepare file type data
