@@ -1,14 +1,17 @@
 package menu
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"smart-log-analyser/pkg/analyser"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
+	"smart-log-analyser/pkg/remote"
 )
 
 // selectLogFiles allows user to select log files
@@ -306,22 +309,225 @@ func (m *Menu) exportCSV(results *analyser.Results, timestamp string) error {
 // Remote analysis handlers (simplified implementations)
 
 func (m *Menu) downloadLogs(analyse bool) error {
-	fmt.Println("🌐 Downloading logs from configured servers...")
-	fmt.Println("This would use the existing remote download functionality")
+	configFile := "servers.json"
+	outputDir := "./downloads"
+	
+	// Check if config exists
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		fmt.Println("❌ No server configuration found")
+		fmt.Printf("   Create configuration file: %s\n", configFile)
+		fmt.Println("   Use 'Setup/configure remote servers' to create one.")
+		m.pause()
+		return nil
+	}
+	
+	// Load config
+	config, err := remote.LoadConfig(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	
+	if len(config.Servers) == 0 {
+		fmt.Println("❌ No servers configured")
+		fmt.Println("   Use 'Setup/configure remote servers' to add servers.")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Println("\n🌐 Download Log Files")
+	fmt.Println("════════════════════")
+	fmt.Printf("📁 Output directory: %s\n", outputDir)
+	fmt.Printf("📋 Configured servers: %d\n", len(config.Servers))
+	fmt.Println()
+	
+	// Show available options
+	fmt.Println("Download options:")
+	fmt.Println("1. Download from all servers")
+	fmt.Println("2. Select specific server")
+	fmt.Println("3. Download single log files only")
+	fmt.Println("4. Download all log files (including archived)")
+	fmt.Println("5. Back to main menu")
+	
+	choice, err := m.getIntInput("\nSelect option (1-5): ", 1, 5)
+	if err != nil {
+		return err
+	}
+	
+	if choice == 5 {
+		return nil
+	}
+	
+	// Create output directory
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+	
+	var serverName string
+	var singleFileMode bool
+	
+	switch choice {
+	case 1:
+		// Download from all servers (default)
+	case 2:
+		serverName = m.selectServer(config)
+		if serverName == "" {
+			return nil
+		}
+	case 3:
+		singleFileMode = true
+	case 4:
+		// Download all files (default behavior)
+	}
+	
+	maxFiles := 10
+	if choice == 4 {
+		maxFilesStr := m.getStringInput("Maximum files per server (default 10): ")
+		if maxFilesStr != "" {
+			if max, err := parseIntOrDefault(maxFilesStr, 10); err == nil {
+				maxFiles = max
+			}
+		}
+	}
+	
+	fmt.Println("\n🔄 Starting download...")
+	
+	var downloadedFiles []string
+	
+	// Download from servers
+	for _, server := range config.Servers {
+		if serverName != "" && server.Host != serverName {
+			continue
+		}
+		
+		fmt.Printf("\n📡 Connecting to %s@%s:%d...\n", server.Username, server.Host, server.Port)
+		
+		files, err := m.downloadFromServer(&server, outputDir, singleFileMode, maxFiles)
+		if err != nil {
+			fmt.Printf("❌ Failed to download from %s: %v\n", server.Host, err)
+			continue
+		}
+		
+		downloadedFiles = append(downloadedFiles, files...)
+	}
+	
+	if len(downloadedFiles) == 0 {
+		fmt.Println("\n❌ No files were downloaded")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Printf("\n✅ Download completed! %d files downloaded.\n", len(downloadedFiles))
+	fmt.Printf("📁 Files saved to: %s\n", outputDir)
+	
+	// If analyse flag is set, immediately analyse the downloaded files
+	if analyse && len(downloadedFiles) > 0 {
+		if m.confirmYesNo("\nAnalyse downloaded files now") {
+			fmt.Println("\n🔄 Starting analysis of downloaded files...")
+			return m.performAnalysis(downloadedFiles, nil, nil, false)
+		}
+	}
+	
 	m.pause()
 	return nil
 }
 
 func (m *Menu) setupRemoteServers() error {
-	fmt.Println("🔧 Remote server setup would be implemented here")
-	m.pause()
-	return nil
+	fmt.Println("\n🔧 Remote Server Configuration")
+	fmt.Println("════════════════════════════")
+	fmt.Println()
+	
+	configFile := "servers.json"
+	
+	// Check if config exists
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		fmt.Println("No configuration file found.")
+		if m.confirmYesNo("Create new server configuration") {
+			if err := remote.CreateSampleConfig(configFile); err != nil {
+				return fmt.Errorf("failed to create config: %w", err)
+			}
+			fmt.Printf("✅ Created sample configuration: %s\n", configFile)
+			fmt.Println()
+		} else {
+			fmt.Println("Configuration setup cancelled.")
+			m.pause()
+			return nil
+		}
+	}
+	
+	// Load existing config
+	config, err := remote.LoadConfig(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	
+	for {
+		fmt.Println("📋 Current Configuration:")
+		fmt.Println("─────────────────────────")
+		if len(config.Servers) == 0 {
+			fmt.Println("   No servers configured")
+		} else {
+			for i, server := range config.Servers {
+				fmt.Printf("   %d. %s@%s:%d\n", i+1, server.Username, server.Host, server.Port)
+				fmt.Printf("      Log Path: %s\n", server.LogPath)
+			}
+		}
+		fmt.Println()
+		
+		fmt.Println("Available actions:")
+		fmt.Println("1. Add new server")
+		fmt.Println("2. Remove server")
+		fmt.Println("3. Test connections")
+		fmt.Println("4. Edit configuration file manually")
+		fmt.Println("5. Back to main menu")
+		
+		choice, err := m.getIntInput("\nSelect action (1-5): ", 1, 5)
+		if err != nil {
+			return err
+		}
+		
+		switch choice {
+		case 1:
+			if err := m.addServer(config, configFile); err != nil {
+				m.showError("Add server error", err)
+			}
+		case 2:
+			if err := m.removeServer(config, configFile); err != nil {
+				m.showError("Remove server error", err)
+			}
+		case 3:
+			if err := m.testServerConnections(config); err != nil {
+				m.showError("Connection test error", err)
+			}
+		case 4:
+			fmt.Printf("\n📝 Manual configuration editing:\n")
+			fmt.Printf("   File: %s\n", configFile)
+			fmt.Printf("   Use your preferred text editor to modify the JSON configuration.\n")
+			m.pause()
+		case 5:
+			return nil
+		}
+	}
 }
 
 func (m *Menu) testConnections() error {
-	fmt.Println("🔌 Testing connections would be implemented here")
-	m.pause()
-	return nil
+	configFile := "servers.json"
+	
+	// Check if config exists
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		fmt.Println("❌ No server configuration found")
+		fmt.Printf("   Create configuration file: %s\n", configFile)
+		fmt.Println("   Use 'Setup/configure remote servers' to create one.")
+		m.pause()
+		return nil
+	}
+	
+	// Load config
+	config, err := remote.LoadConfig(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	
+	return m.testServerConnections(config)
 }
 
 func (m *Menu) downloadAndAnalyse() error {
@@ -408,4 +614,258 @@ func formatNumber(num int) string {
 
 func formatBytes(bytes int64) string {
 	return formatFileSize(bytes)
+}
+
+// Remote server management helpers
+
+func (m *Menu) addServer(config *remote.Config, configFile string) error {
+	fmt.Println("\n➕ Add New Server")
+	fmt.Println("─────────────────")
+	
+	server := remote.SSHConfig{}
+	
+	server.Host = m.getStringInput("Server hostname/IP: ")
+	if server.Host == "" {
+		fmt.Println("❌ Hostname is required")
+		return nil
+	}
+	
+	server.Username = m.getStringInput("Username: ")
+	if server.Username == "" {
+		fmt.Println("❌ Username is required")
+		return nil
+	}
+	
+	server.Password = m.getStringInput("Password: ")
+	if server.Password == "" {
+		fmt.Println("❌ Password is required")
+		return nil
+	}
+	
+	// Port with default
+	portStr := m.getStringInput("Port (default 22): ")
+	if portStr == "" {
+		server.Port = 22
+	} else {
+		port, err := parseIntOrDefault(portStr, 22)
+		if err != nil {
+			fmt.Printf("❌ Invalid port, using default 22\n")
+			server.Port = 22
+		} else {
+			server.Port = port
+		}
+	}
+	
+	// Log path with default
+	server.LogPath = m.getStringInput("Log path (default /var/log/nginx/access.log): ")
+	if server.LogPath == "" {
+		server.LogPath = "/var/log/nginx/access.log"
+	}
+	
+	fmt.Printf("\n📋 New server configuration:\n")
+	fmt.Printf("   Host: %s:%d\n", server.Host, server.Port)
+	fmt.Printf("   User: %s\n", server.Username)
+	fmt.Printf("   Log Path: %s\n", server.LogPath)
+	
+	if !m.confirmYesNo("\nAdd this server") {
+		fmt.Println("Server addition cancelled.")
+		return nil
+	}
+	
+	// Test connection first
+	fmt.Printf("🔌 Testing connection to %s@%s:%d...\n", server.Username, server.Host, server.Port)
+	if err := remote.TestConnection(&server); err != nil {
+		fmt.Printf("⚠️  Connection test failed: %v\n", err)
+		if !m.confirmYesNo("Add server anyway") {
+			return nil
+		}
+	} else {
+		fmt.Println("✅ Connection successful!")
+	}
+	
+	// Add to config
+	config.Servers = append(config.Servers, server)
+	
+	// Save config
+	if err := m.saveConfig(config, configFile); err != nil {
+		return err
+	}
+	
+	fmt.Println("✅ Server added successfully!")
+	m.pause()
+	return nil
+}
+
+func (m *Menu) removeServer(config *remote.Config, configFile string) error {
+	if len(config.Servers) == 0 {
+		fmt.Println("❌ No servers configured to remove")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Println("\n➖ Remove Server")
+	fmt.Println("────────────────")
+	fmt.Println("Select server to remove:")
+	
+	for i, server := range config.Servers {
+		fmt.Printf("%d. %s@%s:%d\n", i+1, server.Username, server.Host, server.Port)
+	}
+	
+	choice, err := m.getIntInput(fmt.Sprintf("\nSelect server (1-%d): ", len(config.Servers)), 1, len(config.Servers))
+	if err != nil {
+		return err
+	}
+	
+	serverToRemove := config.Servers[choice-1]
+	fmt.Printf("\n❌ Remove server: %s@%s:%d?\n", serverToRemove.Username, serverToRemove.Host, serverToRemove.Port)
+	
+	if !m.confirmYesNo("Are you sure") {
+		fmt.Println("Server removal cancelled.")
+		return nil
+	}
+	
+	// Remove server
+	config.Servers = append(config.Servers[:choice-1], config.Servers[choice:]...)
+	
+	// Save config
+	if err := m.saveConfig(config, configFile); err != nil {
+		return err
+	}
+	
+	fmt.Println("✅ Server removed successfully!")
+	m.pause()
+	return nil
+}
+
+func (m *Menu) testServerConnections(config *remote.Config) error {
+	if len(config.Servers) == 0 {
+		fmt.Println("❌ No servers configured to test")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Println("\n🔌 Testing Server Connections")
+	fmt.Println("═══════════════════════════")
+	fmt.Println()
+	
+	for i, server := range config.Servers {
+		fmt.Printf("[%d/%d] Testing %s@%s:%d... ", i+1, len(config.Servers), server.Username, server.Host, server.Port)
+		
+		if err := remote.TestConnection(&server); err != nil {
+			fmt.Printf("❌ FAILED: %v\n", err)
+		} else {
+			fmt.Printf("✅ SUCCESS\n")
+		}
+	}
+	
+	fmt.Println()
+	m.pause()
+	return nil
+}
+
+func (m *Menu) saveConfig(config *remote.Config, configFile string) error {
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+	
+	if err := os.WriteFile(configFile, data, 0600); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	
+	return nil
+}
+
+func parseIntOrDefault(s string, defaultValue int) (int, error) {
+	if i, err := strconv.Atoi(s); err != nil {
+		return defaultValue, err
+	} else {
+		return i, nil
+	}
+}
+
+func (m *Menu) selectServer(config *remote.Config) string {
+	fmt.Println("\n📋 Select Server")
+	fmt.Println("────────────────")
+	
+	for i, server := range config.Servers {
+		fmt.Printf("%d. %s@%s:%d\n", i+1, server.Username, server.Host, server.Port)
+	}
+	
+	choice, err := m.getIntInput(fmt.Sprintf("\nSelect server (1-%d): ", len(config.Servers)), 1, len(config.Servers))
+	if err != nil {
+		return ""
+	}
+	
+	return config.Servers[choice-1].Host
+}
+
+func (m *Menu) downloadFromServer(server *remote.SSHConfig, outputDir string, singleFileMode bool, maxFiles int) ([]string, error) {
+	client := remote.NewSSHClient(server)
+	
+	if err := client.Connect(); err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+	defer client.Close()
+	
+	var filesToDownload []string
+	
+	if singleFileMode {
+		// Download single file only
+		filesToDownload = []string{server.LogPath}
+		fmt.Printf("📄 Downloading single log file: %s\n", server.LogPath)
+	} else {
+		// Download all access log files
+		logDir := filepath.Dir(server.LogPath)
+		if logDir == "." {
+			logDir = "/var/log/nginx"
+		}
+		
+		accessFiles, err := client.ListAccessLogFiles(logDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list files: %w", err)
+		}
+		
+		// Limit number of files
+		if len(accessFiles) > maxFiles {
+			fmt.Printf("⚠️  Found %d files, downloading first %d\n", len(accessFiles), maxFiles)
+			accessFiles = accessFiles[:maxFiles]
+		}
+		
+		filesToDownload = accessFiles
+		fmt.Printf("📦 Downloading %d access log files...\n", len(filesToDownload))
+	}
+	
+	timestamp := time.Now().Format("20060102_150405")
+	var downloadedFiles []string
+	successCount := 0
+	
+	for i, remoteFile := range filesToDownload {
+		// Generate local filename
+		baseName := filepath.Base(remoteFile)
+		localFilename := fmt.Sprintf("%s_%s_%s", server.Host, timestamp, baseName)
+		localPath := filepath.Join(outputDir, localFilename)
+		
+		fmt.Printf("  [%d/%d] %s -> %s\n", i+1, len(filesToDownload), remoteFile, localFilename)
+		
+		if err := client.DownloadFile(remoteFile, localPath); err != nil {
+			fmt.Printf("    ❌ Failed: %v\n", err)
+			continue
+		}
+		
+		// Check file size
+		if stat, err := os.Stat(localPath); err == nil {
+			fmt.Printf("    ✅ Downloaded (%s)\n", formatFileSize(stat.Size()))
+			downloadedFiles = append(downloadedFiles, localPath)
+			successCount++
+		} else {
+			fmt.Printf("    ✅ Downloaded\n")
+			downloadedFiles = append(downloadedFiles, localPath)
+			successCount++
+		}
+	}
+	
+	fmt.Printf("📊 Server summary: %d/%d files downloaded successfully\n", successCount, len(filesToDownload))
+	
+	return downloadedFiles, nil
 }
