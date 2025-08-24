@@ -97,9 +97,27 @@ Smart Log Analyser now features an **interactive menu system** that launches whe
 The menu system guides you through:
 - **File Selection**: Browse directories, use wildcards, or manually enter paths
 - **Time Range Filtering**: Set custom date/time ranges for analysis
+- **Advanced Analytics**: Access to all Phase 3 features through guided interface
+- **Results Processing**: Choose from multiple analysis and visualization options
 - **Export Options**: Choose from HTML, JSON, CSV formats with custom settings
-- **Analysis Configuration**: Select detailed analysis options
 - **Progress Tracking**: Real-time progress indicators for long operations
+
+### Enhanced Results Menu
+After log analysis completes, the interactive system offers comprehensive options:
+```
+📊 Results Options:
+1. Show ASCII charts                              - Terminal visualizations
+2. Export results                                 - HTML/JSON/CSV export  
+3. Trend analysis & degradation detection         - Historical analysis
+4. Combined analysis (charts + trends + export)   - All-in-one workflow
+5. Continue                                       - Return to main menu
+```
+
+**Advanced Features Available:**
+- **ASCII Visualizations**: Interactive charts with customizable width and colors
+- **Trend Analysis**: Automated degradation detection with risk scoring
+- **Combined Workflows**: Seamless integration of all analysis types
+- **Smart Validation**: Helpful feedback about data requirements and limitations
 
 ## Quick Start
 
@@ -231,11 +249,14 @@ Visual terminal-based charts for immediate feedback without external tools. Perf
 ```
 
 ### Interactive Menu Integration
-The ASCII charts are also available through the interactive menu system:
+The ASCII charts are fully integrated into the interactive menu system:
 1. Run analysis: `./smart-log-analyser analyse logs/`
-2. Select: **[6] Export Results** → **[4] Display ASCII Charts**
-3. Choose: Quick Summary / Full Report / Custom Selection
-4. Configure: Chart width (80/100) and color preferences
+2. Select: **[1] Analyse Local Log Files** → choose analysis option
+3. After analysis completes, choose from **Results Options**:
+   - **[1] Show ASCII Charts** - Full visual analysis with interactive options
+   - **[3] Trend Analysis & Degradation Detection** - Historical trend analysis
+   - **[4] Combined Analysis** - ASCII charts + trends + export options
+4. Configure: Chart width (80/100) and color preferences in visualization menus
 
 ## Historical Trend Analysis 📈
 
@@ -303,6 +324,30 @@ The trend analysis includes rich ASCII visualizations when combined with `--asci
 - **Traffic Drop Threshold**: 30% volume decrease monitoring
 - **Minimum Sample Size**: 100 requests required for statistical validity
 - **Risk Scoring**: Weighted analysis considering metric criticality and significance
+
+### Interactive Menu Access
+The trend analysis is seamlessly integrated into the interactive menu system:
+
+**Menu Workflow:**
+```
+📊 Analysis Complete!
+├─ Total Requests: 3,169
+├─ Unique IPs: 1,413
+└─ Time Range: 2025-08-23 00:00 to 2025-08-23 06:35
+
+📊 Results Options:
+1. Show ASCII charts
+2. Export results
+3. Trend analysis & degradation detection          ← Access trend analysis here
+4. Combined analysis (charts + trends + export)    ← Comprehensive option
+5. Continue
+```
+
+**Enhanced User Experience:**
+- **Guided Interface**: No CLI knowledge required for advanced analysis
+- **Smart Validation**: Automatic data sufficiency checking with helpful feedback
+- **Progressive Disclosure**: Visualization options revealed after analysis completion
+- **Professional Display**: Consistent formatting with emojis and structured output
 
 ## HTML Reports 📊
 

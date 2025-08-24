@@ -16,6 +16,7 @@ import (
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
 	"smart-log-analyser/pkg/remote"
+	"smart-log-analyser/pkg/trends"
 )
 
 // selectLogFiles allows user to select log files
@@ -228,10 +229,11 @@ func (m *Menu) performAnalysis(files []string, since, until *time.Time, showDeta
 	fmt.Println("\n📊 Results Options:")
 	fmt.Println("1. Show ASCII charts")
 	fmt.Println("2. Export results")
-	fmt.Println("3. Both charts and export")
-	fmt.Println("4. Continue")
+	fmt.Println("3. Trend analysis & degradation detection")
+	fmt.Println("4. Combined analysis (charts + trends + export)")
+	fmt.Println("5. Continue")
 	
-	choice, err := m.getIntInput("Select option (1-4): ", 1, 4)
+	choice, err := m.getIntInput("Select option (1-5): ", 1, 5)
 	if err != nil {
 		return err
 	}
@@ -242,11 +244,17 @@ func (m *Menu) performAnalysis(files []string, since, until *time.Time, showDeta
 	case 2:
 		return m.handleExport(results)
 	case 3:
+		return m.handleTrendAnalysis(allEntries)
+	case 4:
+		// Combined analysis: charts + trends + export
 		if err := m.showASCIICharts(results); err != nil {
 			return err
 		}
+		if err := m.handleTrendAnalysis(allEntries); err != nil {
+			return err
+		}
 		return m.handleExport(results)
-	case 4:
+	case 5:
 		// Continue to end
 	}
 	
@@ -1070,4 +1078,160 @@ func (m *Menu) downloadFromServer(server *remote.SSHConfig, outputDir string, si
 	fmt.Printf("📊 Server summary: %d/%d files downloaded successfully\n", successCount, len(filesToDownload))
 	
 	return downloadedFiles, nil
+}
+
+// handleTrendAnalysis performs trend analysis and degradation detection
+func (m *Menu) handleTrendAnalysis(allEntries []*parser.LogEntry) error {
+	fmt.Println("\n📈 Trend Analysis & Degradation Detection")
+	fmt.Println("════════════════════════════════════════")
+	
+	// Check if we have enough data
+	if len(allEntries) < 100 {
+		fmt.Printf("\n⚠️  Insufficient data for trend analysis")
+		fmt.Printf("\n   Current entries: %d", len(allEntries))
+		fmt.Printf("\n   Minimum required: 100")
+		fmt.Printf("\n   Recommendation: Use more log files or longer time periods\n")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Printf("\n🔍 Analyzing %d log entries for trends...\n", len(allEntries))
+	
+	// Perform trend analysis
+	trendAnalyser := trends.New()
+	trendResults, err := trendAnalyser.DetectDegradation(allEntries)
+	if err != nil {
+		fmt.Printf("❌ Trend analysis failed: %v\n", err)
+		m.pause()
+		return nil
+	}
+	
+	// Display results
+	m.displayTrendResults(trendResults)
+	
+	// Offer visualization options
+	fmt.Println("\n📊 Visualization Options:")
+	fmt.Println("1. Show ASCII trend charts")
+	fmt.Println("2. Quick trend summary")
+	fmt.Println("3. Both detailed charts and summary")
+	fmt.Println("4. Continue")
+	
+	choice, err := m.getIntInput("Select option (1-4): ", 1, 4)
+	if err != nil {
+		return err
+	}
+	
+	switch choice {
+	case 1:
+		fmt.Print(trends.RenderTrendCharts(trendResults, 80, true))
+	case 2:
+		fmt.Print(trends.RenderQuickTrendSummary(trendResults, 80, true))
+	case 3:
+		fmt.Print(trends.RenderQuickTrendSummary(trendResults, 80, true))
+		fmt.Print(trends.RenderTrendCharts(trendResults, 80, true))
+	case 4:
+		// Continue
+	}
+	
+	m.pause()
+	return nil
+}
+
+// displayTrendResults shows the trend analysis results in the menu format
+func (m *Menu) displayTrendResults(analysis *trends.TrendAnalysis) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    Trend Analysis Results                      ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════╝\n")
+
+	// Overall health status
+	healthEmoji := m.getHealthEmoji(analysis.OverallHealth)
+	fmt.Printf("\n🏥 Overall Health: %s %s", healthEmoji, strings.ToUpper(analysis.OverallHealth))
+	fmt.Printf("\n📊 Analysis Type: %s", analysis.AnalysisType)
+	fmt.Printf("\n🕒 Generated: %s", analysis.GeneratedAt.Format("2006-01-02 15:04:05"))
+	
+	// Trend summary
+	fmt.Printf("\n\n📈 Trend Summary:")
+	fmt.Printf("\n   %s", analysis.TrendSummary)
+
+	// Period comparisons
+	if len(analysis.PeriodComparisons) > 0 {
+		fmt.Printf("\n\n📋 Period Comparison:")
+		comparison := analysis.PeriodComparisons[0]
+		trendEmoji := m.getTrendEmoji(comparison.OverallTrend)
+		fmt.Printf("\n├─ Overall Trend: %s %s", trendEmoji, comparison.OverallTrend.String())
+		fmt.Printf("\n├─ Risk Score: %d/100", comparison.RiskScore)
+		fmt.Printf("\n└─ Summary: %s", comparison.Summary)
+	}
+
+	// Degradation alerts
+	if len(analysis.DegradationAlerts) > 0 {
+		fmt.Printf("\n\n🚨 Degradation Alerts (%d):", len(analysis.DegradationAlerts))
+		for i, alert := range analysis.DegradationAlerts {
+			if i >= 3 { // Show max 3 alerts in menu
+				fmt.Printf("\n   ... and %d more alerts", len(analysis.DegradationAlerts)-3)
+				break
+			}
+			severityEmoji := m.getSeverityEmoji(alert.Severity)
+			fmt.Printf("\n├─ Alert %s: %s %s", alert.AlertID, severityEmoji, alert.MetricName)
+			fmt.Printf("\n│  Impact: %s", alert.Impact)
+			fmt.Printf("\n│  Recommendation: %s", alert.Recommendation)
+		}
+	} else {
+		fmt.Printf("\n\n✅ No degradation alerts detected")
+	}
+
+	// Recommendations
+	if len(analysis.Recommendations) > 0 {
+		fmt.Printf("\n\n💡 Top Recommendations:")
+		for i, rec := range analysis.Recommendations {
+			if i >= 3 { // Show max 3 recommendations
+				break
+			}
+			fmt.Printf("\n   %d. %s", i+1, rec)
+		}
+	}
+	
+	fmt.Printf("\n")
+}
+
+// Helper functions for trend analysis display
+func (m *Menu) getHealthEmoji(health string) string {
+	switch strings.ToLower(health) {
+	case "healthy":
+		return "✅"
+	case "warning":
+		return "⚠️"
+	case "critical":
+		return "🚨"
+	default:
+		return "❓"
+	}
+}
+
+func (m *Menu) getTrendEmoji(trend trends.TrendDirection) string {
+	switch trend {
+	case trends.TrendImproving:
+		return "📈"
+	case trends.TrendStable:
+		return "➡️"
+	case trends.TrendDegrading:
+		return "📉"
+	case trends.TrendCritical:
+		return "🚨"
+	default:
+		return "❓"
+	}
+}
+
+func (m *Menu) getSeverityEmoji(severity string) string {
+	switch strings.ToLower(severity) {
+	case "warning":
+		return "⚠️"
+	case "error":
+		return "❌"
+	case "critical":
+		return "🚨"
+	default:
+		return "ℹ️"
+	}
 }
