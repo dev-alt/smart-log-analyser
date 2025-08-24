@@ -7,11 +7,13 @@ echo "🔍 Checking for potentially sensitive data..."
 
 # Patterns to check for (excluding historical development log entries)
 PATTERNS=(
-    ""
-    ""
+    "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"  # IP addresses
     "ssh-rsa AAAA"
     "BEGIN PRIVATE KEY"
     "BEGIN RSA PRIVATE KEY"
+    "password.*:"
+    "Password.*:"
+    "@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"  # Email addresses or user@host patterns
 )
 
 FOUND_ISSUES=0
