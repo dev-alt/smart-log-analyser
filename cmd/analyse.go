@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"smart-log-analyser/pkg/analyser"
+	"smart-log-analyser/pkg/charts"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
 )
@@ -26,6 +27,9 @@ var (
 	exportHTML  string
 	htmlTitle   string
 	showDetails bool
+	asciiCharts bool
+	chartWidth  int
+	noColors    bool
 )
 
 var analyseCmd = &cobra.Command{
@@ -121,6 +125,9 @@ func init() {
 	analyseCmd.Flags().StringVar(&exportHTML, "export-html", "", "Export interactive HTML report")
 	analyseCmd.Flags().StringVar(&htmlTitle, "html-title", "", "Custom title for HTML report")
 	analyseCmd.Flags().BoolVar(&showDetails, "details", false, "Show detailed breakdown (individual status codes, etc.)")
+	analyseCmd.Flags().BoolVar(&asciiCharts, "ascii-charts", false, "Display ASCII charts with analysis results")
+	analyseCmd.Flags().IntVar(&chartWidth, "chart-width", 80, "Width of ASCII charts (default: 80)")
+	analyseCmd.Flags().BoolVar(&noColors, "no-colors", false, "Disable colors in ASCII charts")
 }
 
 func printResults(results *analyser.Results) {
@@ -481,6 +488,33 @@ func printResults(results *analyser.Results) {
 			}
 		}
 		
+		fmt.Println()
+	}
+
+	// ASCII Charts (if enabled)
+	if asciiCharts {
+		fmt.Printf("📈 ASCII Charts\n")
+		fmt.Printf("═══════════════\n\n")
+		
+		// Generate charts
+		generator := charts.NewChartGenerator()
+		generator.SetWidth(chartWidth)
+		generator.SetColors(!noColors && charts.SupportsColor())
+		
+		// Display selected charts
+		fmt.Print(generator.GenerateStatusCodeChart(results))
+		fmt.Println()
+		
+		fmt.Print(generator.GenerateTopIPsChart(results, topIPs))
+		fmt.Println()
+		
+		fmt.Print(generator.GenerateTopURLsChart(results, topURLs))
+		fmt.Println()
+		
+		fmt.Print(generator.GenerateBotTrafficChart(results))
+		fmt.Println()
+		
+		fmt.Print(generator.GenerateGeographicChart(results))
 		fmt.Println()
 	}
 }

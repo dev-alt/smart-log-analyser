@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"smart-log-analyser/pkg/analyser"
+	"smart-log-analyser/pkg/charts"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
 	"smart-log-analyser/pkg/remote"
@@ -220,9 +222,30 @@ func (m *Menu) performAnalysis(files []string, since, until *time.Time, showDeta
 		results.TimeRange.Start.Format("2006-01-02 15:04"),
 		results.TimeRange.End.Format("2006-01-02 15:04"))
 	
-	// Ask for export options
-	if m.confirmYesNo("\nExport results") {
+	// Ask for display/export options
+	fmt.Println("\n📊 Results Options:")
+	fmt.Println("1. Show ASCII charts")
+	fmt.Println("2. Export results")
+	fmt.Println("3. Both charts and export")
+	fmt.Println("4. Continue")
+	
+	choice, err := m.getIntInput("Select option (1-4): ", 1, 4)
+	if err != nil {
+		return err
+	}
+	
+	switch choice {
+	case 1:
+		return m.showASCIICharts(results)
+	case 2:
 		return m.handleExport(results)
+	case 3:
+		if err := m.showASCIICharts(results); err != nil {
+			return err
+		}
+		return m.handleExport(results)
+	case 4:
+		// Continue to end
 	}
 	
 	m.pause()
@@ -782,6 +805,140 @@ func parseIntOrDefault(s string, defaultValue int) (int, error) {
 	} else {
 		return i, nil
 	}
+}
+
+// showASCIICharts displays ASCII charts for analysis results
+func (m *Menu) showASCIICharts(results *analyser.Results) error {
+	fmt.Println("\n📈 ASCII Charts Visualization")
+	fmt.Println("══════════════════════════════")
+	fmt.Println()
+	
+	// Ask for chart preferences
+	fmt.Println("Chart Options:")
+	fmt.Println("1. Quick summary (key charts)")
+	fmt.Println("2. Full chart report")
+	fmt.Println("3. Custom chart selection")
+	
+	choice, err := m.getIntInput("Select option (1-3): ", 1, 3)
+	if err != nil {
+		return err
+	}
+	
+	// Get terminal width preference
+	width := 80
+	if m.confirmYesNo("\nUse wide charts (100 columns)") {
+		width = 100
+	}
+	
+	// Check color preference
+	useColors := true
+	if m.confirmYesNo("Use colors") {
+		useColors = charts.SupportsColor()
+	} else {
+		useColors = false
+	}
+	
+	// Generate charts
+	generator := charts.NewChartGenerator()
+	generator.SetWidth(width)
+	generator.SetColors(useColors)
+	
+	fmt.Println("\n" + strings.Repeat("═", width))
+	fmt.Println()
+	
+	switch choice {
+	case 1:
+		// Quick summary
+		fmt.Print(generator.GenerateStatusCodeChart(results))
+		fmt.Println()
+		fmt.Print(generator.GenerateBotTrafficChart(results))
+		fmt.Println()
+		fmt.Print(generator.GenerateTopIPsChart(results, 5))
+		fmt.Println()
+		
+	case 2:
+		// Full report
+		fmt.Print(generator.GenerateFullReport(results))
+		
+	case 3:
+		// Custom selection
+		return m.showCustomCharts(generator, results)
+	}
+	
+	fmt.Println(strings.Repeat("═", width))
+	fmt.Println()
+	m.pause()
+	return nil
+}
+
+// showCustomCharts allows user to select specific charts to display
+func (m *Menu) showCustomCharts(generator *charts.ChartGenerator, results *analyser.Results) error {
+	fmt.Println("\n📊 Available Charts:")
+	fmt.Println("1. HTTP Status Codes")
+	fmt.Println("2. Top IP Addresses")
+	fmt.Println("3. Top URLs")
+	fmt.Println("4. Bot vs Human Traffic")
+	fmt.Println("5. Geographic Distribution")
+	fmt.Println("6. Response Size Distribution")
+	fmt.Println("7. Show all charts")
+	fmt.Println()
+	
+	// Allow multiple selections
+	selectedCharts := make(map[int]bool)
+	
+	for {
+		choice, err := m.getIntInput("Select chart (1-7, 0 to finish): ", 0, 7)
+		if err != nil {
+			return err
+		}
+		
+		if choice == 0 {
+			break
+		}
+		
+		selectedCharts[choice] = true
+		fmt.Printf("✅ Selected chart %d\n", choice)
+	}
+	
+	if len(selectedCharts) == 0 {
+		fmt.Println("No charts selected.")
+		return nil
+	}
+	
+	fmt.Println()
+	
+	// Display selected charts
+	for chartNum := range selectedCharts {
+		switch chartNum {
+		case 1:
+			fmt.Print(generator.GenerateStatusCodeChart(results))
+		case 2:
+			topIPs := 10
+			if m.confirmYesNo("Show only top 5 IPs (instead of 10)") {
+				topIPs = 5
+			}
+			fmt.Print(generator.GenerateTopIPsChart(results, topIPs))
+		case 3:
+			topURLs := 10
+			if m.confirmYesNo("Show only top 5 URLs (instead of 10)") {
+				topURLs = 5
+			}
+			fmt.Print(generator.GenerateTopURLsChart(results, topURLs))
+		case 4:
+			fmt.Print(generator.GenerateBotTrafficChart(results))
+		case 5:
+			fmt.Print(generator.GenerateGeographicChart(results))
+		case 6:
+			fmt.Print(generator.GenerateResponseSizeChart(results))
+		case 7:
+			fmt.Print(generator.GenerateFullReport(results))
+			// Don't show other individual charts if showing all
+			return nil
+		}
+		fmt.Println()
+	}
+	
+	return nil
 }
 
 func (m *Menu) selectServer(config *remote.Config) string {
