@@ -15,21 +15,24 @@ import (
 	"smart-log-analyser/pkg/charts"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
+	"smart-log-analyser/pkg/trends"
 )
 
 var (
-	since       string
-	until       string
-	topIPs      int
-	topURLs     int
-	exportJSON  string
-	exportCSV   string
-	exportHTML  string
-	htmlTitle   string
-	showDetails bool
-	asciiCharts bool
-	chartWidth  int
-	noColors    bool
+	since         string
+	until         string
+	topIPs        int
+	topURLs       int
+	exportJSON    string
+	exportCSV     string
+	exportHTML    string
+	htmlTitle     string
+	showDetails   bool
+	asciiCharts   bool
+	chartWidth    int
+	noColors      bool
+	trendAnalysis bool
+	comparePeriod string
 )
 
 var analyseCmd = &cobra.Command{
@@ -82,6 +85,25 @@ Accepts multiple log files to analyse together.`,
 		a := analyser.New()
 		results := a.Analyse(allLogs, sinceTime, untilTime)
 		
+		// Perform trend analysis if requested
+		if trendAnalysis {
+			fmt.Printf("🔍 Performing trend analysis...\n")
+			ta := trends.New()
+			trendResults, err := ta.DetectDegradation(allLogs)
+			if err != nil {
+				fmt.Printf("❌ Failed to perform trend analysis: %v\n", err)
+			} else {
+				fmt.Printf("📈 Trend analysis completed\n")
+				printTrendAnalysis(trendResults)
+				
+				// Display trend charts if ASCII charts are enabled
+				if asciiCharts {
+					fmt.Printf("\n")
+					fmt.Print(trends.RenderTrendCharts(trendResults, chartWidth, !noColors))
+				}
+			}
+		}
+		
 		// Export to files if requested
 		if exportJSON != "" {
 			if err := exportToJSON(results, exportJSON); err != nil {
@@ -128,6 +150,8 @@ func init() {
 	analyseCmd.Flags().BoolVar(&asciiCharts, "ascii-charts", false, "Display ASCII charts with analysis results")
 	analyseCmd.Flags().IntVar(&chartWidth, "chart-width", 80, "Width of ASCII charts (default: 80)")
 	analyseCmd.Flags().BoolVar(&noColors, "no-colors", false, "Disable colors in ASCII charts")
+	analyseCmd.Flags().BoolVar(&trendAnalysis, "trend-analysis", false, "Perform historical trend analysis and degradation detection")
+	analyseCmd.Flags().StringVar(&comparePeriod, "compare-period", "", "Compare with specific period (e.g., 'previous-day', '2024-08-20')")
 }
 
 func printResults(results *analyser.Results) {
@@ -696,4 +720,128 @@ func exportToHTML(results *analyser.Results, filename string, title string) erro
 	}
 	
 	return generator.GenerateReport(results, filename, title)
+}
+
+// printTrendAnalysis displays trend analysis results
+func printTrendAnalysis(trendAnalysis *trends.TrendAnalysis) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    Trend Analysis Results                      ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════╝\n\n")
+
+	// Overall health status
+	healthEmoji := getHealthEmoji(trendAnalysis.OverallHealth)
+	fmt.Printf("🏥 Overall Health: %s %s\n", healthEmoji, strings.ToUpper(trendAnalysis.OverallHealth))
+	fmt.Printf("📊 Analysis Type: %s\n", trendAnalysis.AnalysisType)
+	fmt.Printf("🕒 Generated: %s\n", trendAnalysis.GeneratedAt.Format("2006-01-02 15:04:05"))
+	
+	// Trend summary
+	fmt.Printf("\n📈 Trend Summary:\n")
+	fmt.Printf("   %s\n", trendAnalysis.TrendSummary)
+
+	// Period comparisons
+	if len(trendAnalysis.PeriodComparisons) > 0 {
+		fmt.Printf("\n📋 Period Comparison:\n")
+		for _, comparison := range trendAnalysis.PeriodComparisons {
+			printPeriodComparison(&comparison)
+		}
+	}
+
+	// Degradation alerts
+	if len(trendAnalysis.DegradationAlerts) > 0 {
+		fmt.Printf("\n🚨 Degradation Alerts (%d):\n", len(trendAnalysis.DegradationAlerts))
+		for _, alert := range trendAnalysis.DegradationAlerts {
+			printDegradationAlert(&alert)
+		}
+	}
+
+	// Recommendations
+	if len(trendAnalysis.Recommendations) > 0 {
+		fmt.Printf("\n💡 Recommendations:\n")
+		for i, rec := range trendAnalysis.Recommendations {
+			fmt.Printf("   %d. %s\n", i+1, rec)
+		}
+	}
+}
+
+// printPeriodComparison displays period comparison details
+func printPeriodComparison(comparison *trends.PeriodComparison) {
+	trendEmoji := getTrendEmoji(comparison.OverallTrend)
+	fmt.Printf("├─ Overall Trend: %s %s\n", trendEmoji, comparison.OverallTrend.String())
+	fmt.Printf("├─ Risk Score: %d/100\n", comparison.RiskScore)
+	fmt.Printf("├─ Summary: %s\n", comparison.Summary)
+	
+	// Show significant changes
+	fmt.Printf("└─ Key Changes:\n")
+	for _, change := range comparison.TrendChanges {
+		if change.Significance == "high" || change.Direction == trends.TrendCritical {
+			changeEmoji := getChangeEmoji(change.Direction)
+			fmt.Printf("   %s %s\n", changeEmoji, change.Description)
+		}
+	}
+}
+
+// printDegradationAlert displays degradation alert details
+func printDegradationAlert(alert *trends.DegradationAlert) {
+	severityEmoji := getSeverityEmoji(alert.Severity)
+	fmt.Printf("├─ Alert %s: %s %s\n", alert.AlertID, severityEmoji, alert.MetricName)
+	fmt.Printf("│  Current Value: %.2f (was %.2f)\n", alert.CurrentValue, alert.BaselineValue)
+	fmt.Printf("│  Impact: %s\n", alert.Impact)
+	fmt.Printf("│  Recommendation: %s\n", alert.Recommendation)
+}
+
+// Helper functions for emojis
+func getHealthEmoji(health string) string {
+	switch strings.ToLower(health) {
+	case "healthy":
+		return "✅"
+	case "warning":
+		return "⚠️"
+	case "critical":
+		return "🚨"
+	default:
+		return "❓"
+	}
+}
+
+func getTrendEmoji(trend trends.TrendDirection) string {
+	switch trend {
+	case trends.TrendImproving:
+		return "📈"
+	case trends.TrendStable:
+		return "➡️"
+	case trends.TrendDegrading:
+		return "📉"
+	case trends.TrendCritical:
+		return "🚨"
+	default:
+		return "❓"
+	}
+}
+
+func getChangeEmoji(direction trends.TrendDirection) string {
+	switch direction {
+	case trends.TrendImproving:
+		return "✅"
+	case trends.TrendStable:
+		return "➡️"
+	case trends.TrendDegrading:
+		return "⚠️"
+	case trends.TrendCritical:
+		return "🚨"
+	default:
+		return "❓"
+	}
+}
+
+func getSeverityEmoji(severity string) string {
+	switch strings.ToLower(severity) {
+	case "warning":
+		return "⚠️"
+	case "error":
+		return "❌"
+	case "critical":
+		return "🚨"
+	default:
+		return "ℹ️"
+	}
 }

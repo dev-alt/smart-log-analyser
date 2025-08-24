@@ -39,7 +39,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **HTML report generation with embedded charts** (Interactive reports with Chart.js visualizations)
 - [x] **Interactive menu system** (User-friendly guided interface with dual-mode operation)
 - [x] **ASCII charts and terminal visualizations** (Professional terminal-based charts with color support)
-- [ ] Historical trend analysis (compare periods, track degradation)
+- [x] **Historical trend analysis** (Compare periods, track degradation, automated alerting)
 - [ ] Advanced query language for complex filtering
 - [ ] Database integration (SQLite, PostgreSQL export)
 - [ ] Plugin architecture for custom analyzers
@@ -160,6 +160,12 @@ The menu system guides you through:
 # Customize ASCII chart display (width, colors, top results)
 ./smart-log-analyser analyse ./logs/*.log --ascii-charts --chart-width=100 --no-colors --top-ips=5
 
+# Perform historical trend analysis and degradation detection
+./smart-log-analyser analyse /var/log/nginx/access.log* --trend-analysis
+
+# Combine trend analysis with visual charts for comprehensive insights
+./smart-log-analyser analyse ./logs/*.log --trend-analysis --ascii-charts --chart-width=100
+
 # Analyze traffic patterns and identify peak hours
 ./smart-log-analyser analyse /var/log/nginx/access.log* --details
 ```
@@ -230,6 +236,73 @@ The ASCII charts are also available through the interactive menu system:
 2. Select: **[6] Export Results** → **[4] Display ASCII Charts**
 3. Choose: Quick Summary / Full Report / Custom Selection
 4. Configure: Chart width (80/100) and color preferences
+
+## Historical Trend Analysis 📈
+
+Advanced trend analysis for detecting performance degradation and comparing different time periods automatically.
+
+### Features
+- **Automated Degradation Detection**: Identifies declining performance patterns using statistical analysis
+- **Period-over-Period Comparison**: Compares metrics between different time segments automatically
+- **Risk Assessment**: 0-100 risk scoring with actionable recommendations  
+- **Smart Alerting**: Configurable thresholds with severity-based alert classification
+- **Statistical Validation**: Minimum sample size requirements and confidence level assessment
+
+### Analysis Types
+- **Request Volume Trends**: Traffic pattern changes and volume fluctuations
+- **Error Rate Monitoring**: 4xx/5xx response code trend analysis with threshold alerts
+- **Performance Degradation**: Response time proxy analysis via response size tracking
+- **Bot Traffic Analysis**: Automated vs human traffic pattern changes
+- **Geographic Shifts**: Traffic source and distribution pattern analysis
+
+### Visualization Integration
+The trend analysis includes rich ASCII visualizations when combined with `--ascii-charts`:
+- **Risk Score Gauge**: Horizontal gauge showing current risk level (0-100)
+- **Degradation Alerts Chart**: Alert distribution by severity level
+- **Metric Change Visualization**: Percentage changes across key performance indicators
+- **Health Status Display**: Color-coded system health assessment
+
+### Trend Analysis Usage
+```bash
+# Basic trend analysis with automatic period detection
+./smart-log-analyser analyse access.log --trend-analysis
+
+# Enhanced analysis with visual charts
+./smart-log-analyser analyse access.log --trend-analysis --ascii-charts
+
+# Comprehensive analysis with all features
+./smart-log-analyser analyse access.log --trend-analysis --ascii-charts --details --chart-width=100
+
+# Export results with trend analysis included
+./smart-log-analyser analyse access.log --trend-analysis --export-html=report.html
+```
+
+### Sample Output
+```
+🏥 Overall Health: ⚠️ WARNING
+📊 Analysis Type: degradation  
+📈 Trend Summary: Analysis shows degrading trend with risk score 9/100
+
+📋 Period Comparison:
+├─ Overall Trend: 📉 degrading
+├─ Risk Score: 9/100
+└─ Key Changes: Bot Traffic decreased 5.1%
+
+🚨 Degradation Alerts (1):
+├─ Alert TREND-001: ⚠️ Bot Traffic
+│  Impact: Impact requires investigation
+└─ Recommendation: Monitor metric closely and investigate root causes
+
+💡 Recommendations:
+   1. Monitor metric closely and investigate root causes
+```
+
+### Configuration Parameters
+- **Error Rate Threshold**: 10% increase triggers alerts (configurable)
+- **Performance Threshold**: 20% response time increase detection
+- **Traffic Drop Threshold**: 30% volume decrease monitoring
+- **Minimum Sample Size**: 100 requests required for statistical validity
+- **Risk Scoring**: Weighted analysis considering metric criticality and significance
 
 ## HTML Reports 📊
 
