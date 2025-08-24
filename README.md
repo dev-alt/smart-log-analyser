@@ -38,8 +38,8 @@ Smart Log Analyser is designed to help system administrators and developers gain
 ### Phase 3 (Advanced Analytics) 🚀
 - [x] **HTML report generation with embedded charts** (Interactive reports with Chart.js visualizations)
 - [x] **Interactive menu system** (User-friendly guided interface with dual-mode operation)
+- [x] **ASCII charts and terminal visualizations** (Professional terminal-based charts with color support)
 - [ ] Historical trend analysis (compare periods, track degradation)
-- [ ] ASCII charts and terminal visualizations
 - [ ] Advanced query language for complex filtering
 - [ ] Database integration (SQLite, PostgreSQL export)
 - [ ] Plugin architecture for custom analyzers
@@ -154,6 +154,12 @@ The menu system guides you through:
 # Generate multiple export formats simultaneously
 ./smart-log-analyser analyse ./downloads/*.log --export-html=output/report.html --export-json=output/data.json --export-csv=output/summary.csv --details
 
+# Display ASCII charts in terminal for immediate visual feedback
+./smart-log-analyser analyse /var/log/nginx/access.log* --ascii-charts
+
+# Customize ASCII chart display (width, colors, top results)
+./smart-log-analyser analyse ./logs/*.log --ascii-charts --chart-width=100 --no-colors --top-ips=5
+
 # Analyze traffic patterns and identify peak hours
 ./smart-log-analyser analyse /var/log/nginx/access.log* --details
 ```
@@ -184,6 +190,46 @@ The menu system guides you through:
 # Analyse downloaded files
 ./smart-log-analyser analyse ./downloads/*.log
 ```
+
+## ASCII Charts 📈
+
+Visual terminal-based charts for immediate feedback without external tools. Perfect for SSH sessions and DevOps workflows.
+
+### Features
+- **Professional Terminal Charts**: Clean bar charts with proper scaling and labels
+- **Color Intelligence**: Automatic color detection with graceful fallbacks for non-color terminals
+- **SSH-Friendly**: Works perfectly over remote terminal connections
+- **Flexible Sizing**: Adjustable chart width (60-100+ columns) for different terminal sizes
+- **Multiple Chart Types**: Status codes, traffic analysis, geographic distribution, top IPs/URLs
+
+### Chart Types
+- **HTTP Status Code Distribution**: Color-coded by status type (2xx=green, 4xx=red, 5xx=magenta)
+- **Human vs Bot Traffic**: Clear visualization of automated vs human requests
+- **Top IP Addresses**: Traffic volume visualization with IP address display
+- **Top URLs**: Request count charts with smart URL path truncation
+- **Geographic Distribution**: Local/CDN/International traffic breakdown
+
+### ASCII Chart Usage
+```bash
+# Basic ASCII charts with standard 80-column width
+./smart-log-analyser analyse access.log --ascii-charts
+
+# Wide charts for large terminals
+./smart-log-analyser analyse access.log --ascii-charts --chart-width=100
+
+# Disable colors for plain terminals or when piping output
+./smart-log-analyser analyse access.log --ascii-charts --no-colors
+
+# Combine with other options
+./smart-log-analyser analyse access.log --ascii-charts --top-ips=10 --details
+```
+
+### Interactive Menu Integration
+The ASCII charts are also available through the interactive menu system:
+1. Run analysis: `./smart-log-analyser analyse logs/`
+2. Select: **[6] Export Results** → **[4] Display ASCII Charts**
+3. Choose: Quick Summary / Full Report / Custom Selection
+4. Configure: Chart width (80/100) and color preferences
 
 ## HTML Reports 📊
 
