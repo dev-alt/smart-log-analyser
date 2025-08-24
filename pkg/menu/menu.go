@@ -96,7 +96,7 @@ func (m *Menu) handleLocalAnalysis() error {
 	fmt.Println("════════════════════")
 	fmt.Println()
 	fmt.Println("Available options:")
-	fmt.Println("1. Quick analysis (current directory *.log files)")
+	fmt.Println("1. Quick analysis (auto-discover log files)")
 	fmt.Println("2. Select specific files")
 	fmt.Println("3. Analyse with time range filter")
 	fmt.Println("4. Advanced analysis with all options")

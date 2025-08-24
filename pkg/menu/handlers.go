@@ -17,7 +17,7 @@ func (m *Menu) selectLogFiles() ([]string, error) {
 	fmt.Println("─────────────────")
 	
 	fmt.Println("1. Enter file paths manually")
-	fmt.Println("2. Browse current directory")
+	fmt.Println("2. Browse for log files (auto-discover)")
 	fmt.Println("3. Use wildcard pattern")
 	
 	choice, err := m.getIntInput("\nSelect option (1-3): ", 1, 3)
@@ -62,15 +62,19 @@ func (m *Menu) enterFilePaths() ([]string, error) {
 	return files, nil
 }
 
-// browseDirectory shows files in current directory
+// browseDirectory shows files in common directories  
 func (m *Menu) browseDirectory() ([]string, error) {
-	fmt.Println("\n📂 Files in current directory:")
+	fmt.Println("\n📂 Browsing for log files...")
 	
-	logFiles := m.findLogFiles(".")
+	logFiles := m.findLogFilesIntelligent()
 	if len(logFiles) == 0 {
-		fmt.Println("❌ No log files found in current directory")
+		fmt.Println("❌ No log files found in common locations")
+		fmt.Println("   Searched: ./downloads/, ./logs/, current directory")
 		return nil, nil
 	}
+	
+	location := m.getSourceLocation(logFiles)
+	fmt.Printf("📁 Found %d log files in %s\n", len(logFiles), location)
 	
 	fmt.Println("\nAvailable log files:")
 	for i, file := range logFiles {
