@@ -41,6 +41,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **ASCII charts and terminal visualizations** (Professional terminal-based charts with color support)
 - [x] **Historical trend analysis** (Compare periods, track degradation, automated alerting)
 - [x] **Advanced query language for complex filtering** (SQL-like query language with filtering, aggregation, and functions)
+- [x] **Configuration management and presets** (12 built-in analysis presets, 5 report templates, user preferences)
 - [ ] Database integration (SQLite, PostgreSQL export)
 - [ ] Plugin architecture for custom analyzers
 
@@ -424,6 +425,97 @@ Smart Log Analyser supports both **interactive menu mode** and **traditional CLI
 ```
 
 Both modes provide access to the same powerful analysis features, just with different user interfaces optimized for different use cases.
+
+## Configuration Management & Presets 🎯
+
+Smart Log Analyser includes a comprehensive configuration management system with built-in analysis presets and report templates.
+
+### Quick Start
+```bash
+# Initialize configuration with built-in presets and templates
+./smart-log-analyser config --init
+
+# View configuration status
+./smart-log-analyser config --status
+
+# List available presets
+./smart-log-analyser config --list presets
+```
+
+### Analysis Presets
+
+Smart Log Analyser includes **12 built-in analysis presets** organized into categories:
+
+#### 🔒 Security Analysis (3 presets)
+- **security-failed-logins**: Detect failed authentication attempts and suspicious patterns
+- **security-attack-patterns**: Identify potential attack patterns and malicious requests  
+- **security-suspicious-ips**: Find IPs with unusually high request rates or error patterns
+
+#### ⚡ Performance Analysis (3 presets) 
+- **performance-slow-endpoints**: Identify slow-performing endpoints and large responses
+- **performance-error-analysis**: Analyze error patterns and response time issues
+- **performance-resource-usage**: Monitor bandwidth usage and resource consumption
+
+#### 📊 Traffic Analysis (6 presets)
+- **traffic-peak-analysis**: Analyze traffic patterns and identify peak usage periods
+- **traffic-user-agents**: Analyze user agent patterns and bot traffic identification
+- **traffic-geographic**: Geographic distribution analysis of traffic sources
+- **traffic-content-analysis**: Analyze content type and resource access patterns
+- **simple-top-ips**: Simple analysis of top requesting IP addresses
+- **simple-status-codes**: HTTP status code distribution analysis
+
+### Using Presets
+```bash
+# Use a preset for analysis
+./smart-log-analyser analyse access.log --preset simple-top-ips
+
+# Combine presets with other options
+./smart-log-analyser analyse access.log --preset security-failed-logins --ascii-charts
+
+# List all available presets with details
+./smart-log-analyser config --list presets
+
+# View preset categories
+./smart-log-analyser config --list categories
+```
+
+### Report Templates
+
+**5 built-in report templates** for consistent professional reporting:
+
+- **security-report**: Comprehensive security analysis with charts and recommendations
+- **performance-report**: Performance analysis and optimization insights
+- **traffic-report**: Traffic analysis and user behavior patterns
+- **executive-summary**: High-level executive overview with key metrics
+- **detailed-analysis**: Comprehensive detailed analysis with all sections
+
+### Configuration Commands
+```bash
+# Configuration management
+./smart-log-analyser config --init                    # Initialize with defaults
+./smart-log-analyser config --status                  # Show configuration status
+./smart-log-analyser config --reset                   # Reset to defaults
+./smart-log-analyser config --backup                  # Create configuration backup
+
+# Listing and exploration
+./smart-log-analyser config --list presets            # List analysis presets
+./smart-log-analyser config --list templates          # List report templates
+./smart-log-analyser config --list servers            # List server profiles
+./smart-log-analyser config --list categories         # List preset categories
+
+# Import/Export presets
+./smart-log-analyser config --export presets.yaml    # Export presets to file
+./smart-log-analyser config --import presets.yaml    # Import presets from file
+```
+
+### Configuration Files
+
+Configuration is stored in the `config/` directory:
+- **`app.yaml`** - Main configuration file with all settings
+- **`presets/`** - Custom analysis presets (future use)  
+- **`templates/`** - Custom report templates (future use)
+- **`profiles/`** - Server connection profiles (future use)
+- **`backup/`** - Configuration backups
 
 ## Example Output
 

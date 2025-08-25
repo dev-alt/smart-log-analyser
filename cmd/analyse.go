@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"smart-log-analyser/pkg/analyser"
 	"smart-log-analyser/pkg/charts"
+	"smart-log-analyser/pkg/config"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
 	"smart-log-analyser/pkg/query"
@@ -36,6 +37,8 @@ var (
 	comparePeriod string
 	queryString   string
 	queryFormat   string
+	presetName    string
+	analyseConfigDir string
 )
 
 var analyseCmd = &cobra.Command{
@@ -64,6 +67,14 @@ Available functions: COUNT(), SUM(), AVG(), MIN(), MAX(), HOUR(), DAY(), UPPER()
 Available operators: =, !=, <, >, <=, >=, LIKE, CONTAINS, STARTS_WITH, ENDS_WITH, IN, BETWEEN`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Handle preset loading if specified
+		if presetName != "" {
+			if err := applyPreset(presetName); err != nil {
+				fmt.Printf("❌ Failed to apply preset '%s': %v\n", presetName, err)
+				os.Exit(1)
+			}
+		}
+		
 		p := parser.New()
 		var allLogs []*parser.LogEntry
 		
@@ -204,6 +215,8 @@ func init() {
 	analyseCmd.Flags().StringVar(&comparePeriod, "compare-period", "", "Compare with specific period (e.g., 'previous-day', '2024-08-20')")
 	analyseCmd.Flags().StringVar(&queryString, "query", "", "Execute a custom SQL-like query on log data")
 	analyseCmd.Flags().StringVar(&queryFormat, "query-format", "table", "Output format for query results (table, csv, json)")
+	analyseCmd.Flags().StringVar(&presetName, "preset", "", "Use a predefined analysis preset (security, performance, traffic)")
+	analyseCmd.Flags().StringVar(&analyseConfigDir, "config-dir", "config", "Configuration directory path")
 }
 
 func printResults(results *analyser.Results) {
@@ -896,4 +909,76 @@ func getSeverityEmoji(severity string) string {
 	default:
 		return "ℹ️"
 	}
+}
+
+// applyPreset loads and applies a configuration preset
+func applyPreset(presetName string) error {
+	// Load configuration
+	configManager := config.NewConfigManager(analyseConfigDir)
+	if err := configManager.Load(); err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Get the preset
+	preset, err := configManager.GetPreset(presetName)
+	if err != nil {
+		return fmt.Errorf("preset not found: %w", err)
+	}
+
+	fmt.Printf("🎯 Applying preset: %s (%s)\n", preset.Name, preset.Description)
+	fmt.Printf("📂 Category: %s\n\n", preset.Category)
+
+	// Apply preset query if available
+	if preset.Query != "" {
+		queryString = preset.Query
+		fmt.Printf("🔍 Using query: %s\n\n", preset.Query)
+	}
+
+	// Apply preset filters
+	if preset.Filters.Since != "" {
+		since = preset.Filters.Since
+	}
+	if preset.Filters.Until != "" {
+		until = preset.Filters.Until
+	}
+
+	// Apply preset export configurations
+	for _, exportConfig := range preset.Exports {
+		switch exportConfig.Format {
+		case "json":
+			if exportConfig.Filename != "" {
+				exportJSON = exportConfig.Filename
+			} else {
+				exportJSON = fmt.Sprintf("output/%s.json", presetName)
+			}
+		case "csv":
+			if exportConfig.Filename != "" {
+				exportCSV = exportConfig.Filename
+			} else {
+				exportCSV = fmt.Sprintf("output/%s.csv", presetName)
+			}
+		case "html":
+			if exportConfig.Filename != "" {
+				exportHTML = exportConfig.Filename
+			} else {
+				exportHTML = fmt.Sprintf("output/%s.html", presetName)
+			}
+			if exportConfig.Template != "" {
+				htmlTitle = exportConfig.Template
+			}
+		}
+	}
+
+	// Apply chart configurations
+	for _, chartConfig := range preset.Charts {
+		if chartConfig.Enabled {
+			asciiCharts = true
+			if chartConfig.Width > 0 {
+				chartWidth = chartConfig.Width
+			}
+			noColors = !chartConfig.Colors
+		}
+	}
+
+	return nil
 }

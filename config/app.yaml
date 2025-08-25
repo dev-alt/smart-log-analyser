@@ -1,0 +1,540 @@
+analysis:
+    default_top_ips: 10
+    default_top_urls: 10
+    default_time_range: 24h
+    auto_charts: true
+    chart_width: 80
+    no_colors: false
+    export_formats:
+        - json
+        - csv
+    show_details: false
+    trend_analysis: false
+servers: []
+templates:
+    - name: security-report
+      description: Comprehensive security analysis report template
+      category: security
+      sections:
+        - name: Executive Summary
+          type: text
+          config:
+            content: Security Analysis Overview
+          order: 1
+          enabled: true
+        - name: Failed Login Attempts
+          type: table
+          query: SELECT ip, COUNT() as attempts FROM logs WHERE status IN (401, 403) GROUP BY ip HAVING attempts > 3 ORDER BY attempts DESC LIMIT 10
+          order: 2
+          enabled: true
+        - name: Attack Patterns Chart
+          type: chart
+          query: SELECT status, COUNT() as count FROM logs WHERE status >= 400 GROUP BY status ORDER BY count DESC
+          config:
+            chart_type: bar
+            color: '#dc3545'
+            title: Attack Patterns by Status Code
+          order: 3
+          enabled: true
+        - name: Suspicious IPs
+          type: table
+          query: SELECT ip, COUNT() as requests, COUNT(DISTINCT url) as unique_urls FROM logs WHERE status >= 400 GROUP BY ip ORDER BY requests DESC LIMIT 15
+          order: 4
+          enabled: true
+        - name: Security Recommendations
+          type: text
+          config:
+            content: Based on the analysis, consider implementing rate limiting and monitoring suspicious IP addresses.
+          order: 5
+          enabled: true
+      style:
+        theme: light
+        colors:
+            primary: '#dc3545'
+            secondary: '#6c757d'
+        layout: single
+        show_logo: true
+      created_at: 2025-08-25T13:58:07.010720071+12:00
+      updated_at: 2025-08-25T13:58:07.010720071+12:00
+    - name: performance-report
+      description: Performance analysis and optimization report template
+      category: performance
+      sections:
+        - name: Performance Overview
+          type: stats
+          query: SELECT COUNT() as total_requests, AVG(size) as avg_response_size, COUNT(CASE WHEN status >= 400 THEN 1 END) as error_rate FROM logs
+          order: 1
+          enabled: true
+        - name: Response Time Analysis
+          type: chart
+          query: SELECT HOUR(timestamp) as hour, AVG(size) as avg_size FROM logs GROUP BY hour ORDER BY hour
+          config:
+            chart_type: line
+            color: '#ffc107'
+            title: Average Response Size by Hour
+          order: 2
+          enabled: true
+        - name: Slowest Endpoints
+          type: table
+          query: SELECT url, AVG(size) as avg_size, COUNT() as requests FROM logs WHERE status = 200 GROUP BY url ORDER BY avg_size DESC LIMIT 10
+          order: 3
+          enabled: true
+        - name: Error Analysis
+          type: chart
+          query: SELECT status, COUNT() as count FROM logs WHERE status >= 400 GROUP BY status ORDER BY count DESC
+          config:
+            chart_type: pie
+            color: '#dc3545'
+            title: Error Distribution
+          order: 4
+          enabled: true
+        - name: Performance Recommendations
+          type: text
+          config:
+            content: Consider optimizing endpoints with high response sizes and implementing caching strategies.
+          order: 5
+          enabled: true
+      style:
+        theme: light
+        colors:
+            primary: '#ffc107'
+            secondary: '#6c757d'
+        layout: multi-column
+        show_logo: true
+      created_at: 2025-08-25T13:58:07.010720071+12:00
+      updated_at: 2025-08-25T13:58:07.010720071+12:00
+    - name: traffic-report
+      description: Traffic analysis and user behavior report template
+      category: traffic
+      sections:
+        - name: Traffic Summary
+          type: stats
+          query: SELECT COUNT() as total_requests, COUNT(DISTINCT ip) as unique_visitors, SUM(size) as total_bytes FROM logs
+          order: 1
+          enabled: true
+        - name: Hourly Traffic Pattern
+          type: chart
+          query: SELECT HOUR(timestamp) as hour, COUNT() as requests FROM logs GROUP BY hour ORDER BY hour
+          config:
+            chart_type: line
+            color: '#28a745'
+            title: Requests by Hour
+          order: 2
+          enabled: true
+        - name: Top Visitors
+          type: table
+          query: SELECT ip, COUNT() as requests, SUM(size) as total_bytes FROM logs GROUP BY ip ORDER BY requests DESC LIMIT 10
+          order: 3
+          enabled: true
+        - name: Content Type Distribution
+          type: chart
+          query: SELECT CASE WHEN url LIKE '%.css' THEN 'CSS' WHEN url LIKE '%.js' THEN 'JavaScript' WHEN url LIKE '%.png' OR url LIKE '%.jpg' THEN 'Images' ELSE 'Dynamic' END as type, COUNT() as requests FROM logs GROUP BY type ORDER BY requests DESC
+          config:
+            chart_type: pie
+            color: '#28a745'
+            title: Content Type Distribution
+          order: 4
+          enabled: true
+        - name: Top Requested Pages
+          type: table
+          query: SELECT url, COUNT() as requests FROM logs WHERE status = 200 GROUP BY url ORDER BY requests DESC LIMIT 15
+          order: 5
+          enabled: true
+      style:
+        theme: light
+        colors:
+            primary: '#28a745'
+            secondary: '#6c757d'
+        layout: single
+        show_logo: true
+      created_at: 2025-08-25T13:58:07.010720071+12:00
+      updated_at: 2025-08-25T13:58:07.010720071+12:00
+    - name: executive-summary
+      description: High-level executive summary report template
+      category: general
+      sections:
+        - name: Key Metrics
+          type: stats
+          query: SELECT COUNT() as total_requests, COUNT(DISTINCT ip) as unique_visitors, COUNT(CASE WHEN status >= 400 THEN 1 END) as errors, SUM(size) as total_bytes FROM logs
+          order: 1
+          enabled: true
+        - name: Traffic Trend
+          type: chart
+          query: SELECT DATE(timestamp) as date, COUNT() as requests FROM logs GROUP BY date ORDER BY date
+          config:
+            chart_type: line
+            color: '#007bff'
+            title: Daily Traffic Trend
+          order: 2
+          enabled: true
+        - name: Status Code Distribution
+          type: chart
+          query: SELECT CASE WHEN status < 300 THEN 'Success' WHEN status < 400 THEN 'Redirect' WHEN status < 500 THEN 'Client Error' ELSE 'Server Error' END as category, COUNT() as count FROM logs GROUP BY category ORDER BY count DESC
+          config:
+            chart_type: pie
+            color: '#17a2b8'
+            title: Response Status Distribution
+          order: 3
+          enabled: true
+        - name: Executive Summary
+          type: text
+          config:
+            content: This report provides a comprehensive overview of web server activity, including traffic patterns, error rates, and performance metrics.
+          order: 4
+          enabled: true
+      style:
+        theme: light
+        colors:
+            primary: '#007bff'
+            secondary: '#6c757d'
+        layout: multi-column
+        show_logo: true
+      created_at: 2025-08-25T13:58:07.010720071+12:00
+      updated_at: 2025-08-25T13:58:07.010720071+12:00
+    - name: detailed-analysis
+      description: Comprehensive detailed analysis report template
+      category: general
+      sections:
+        - name: Analysis Overview
+          type: stats
+          query: SELECT COUNT() as total_requests, COUNT(DISTINCT ip) as unique_visitors, MIN(timestamp) as first_request, MAX(timestamp) as last_request FROM logs
+          order: 1
+          enabled: true
+        - name: Top IP Addresses
+          type: table
+          query: SELECT ip, COUNT() as requests, COUNT(DISTINCT url) as unique_pages, SUM(size) as total_bytes FROM logs GROUP BY ip ORDER BY requests DESC LIMIT 20
+          order: 2
+          enabled: true
+        - name: Most Requested URLs
+          type: table
+          query: SELECT url, COUNT() as requests, AVG(size) as avg_size FROM logs GROUP BY url ORDER BY requests DESC LIMIT 20
+          order: 3
+          enabled: true
+        - name: HTTP Methods Distribution
+          type: chart
+          query: SELECT method, COUNT() as count FROM logs GROUP BY method ORDER BY count DESC
+          config:
+            chart_type: bar
+            color: '#6f42c1'
+            title: HTTP Methods Usage
+          order: 4
+          enabled: true
+        - name: Error Analysis
+          type: table
+          query: SELECT url, status, COUNT() as occurrences FROM logs WHERE status >= 400 GROUP BY url, status ORDER BY occurrences DESC LIMIT 15
+          order: 5
+          enabled: true
+        - name: Bandwidth Usage Over Time
+          type: chart
+          query: SELECT HOUR(timestamp) as hour, SUM(size) as total_bytes FROM logs GROUP BY hour ORDER BY hour
+          config:
+            chart_type: line
+            color: '#fd7e14'
+            title: Hourly Bandwidth Usage
+          order: 6
+          enabled: true
+      style:
+        theme: light
+        colors:
+            primary: '#6f42c1'
+            secondary: '#6c757d'
+        layout: single
+        show_logo: true
+      created_at: 2025-08-25T13:58:07.010720071+12:00
+      updated_at: 2025-08-25T13:58:07.010720071+12:00
+presets:
+    - name: security-failed-logins
+      description: Detect failed login attempts and suspicious authentication patterns
+      category: security
+      query: SELECT ip, COUNT() as attempts, url FROM logs WHERE status IN (401, 403) GROUP BY ip, url HAVING attempts > 3 ORDER BY attempts DESC
+      filters:
+        status_codes:
+            - 401
+            - 403
+      exports:
+        - format: json
+          filename: security-failed-logins.json
+          auto_open: false
+        - format: csv
+          filename: security-failed-logins.csv
+          auto_open: false
+      charts:
+        - type: bar
+          title: Failed Login Attempts by IP
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: security-attack-patterns
+      description: Identify potential attack patterns and malicious requests
+      category: security
+      query: SELECT ip, url, method, status, COUNT() as requests FROM logs WHERE (url LIKE '%admin%' OR url LIKE '%wp-admin%' OR url LIKE '%.php%' OR url LIKE '%sql%') GROUP BY ip, url, method, status ORDER BY requests DESC
+      filters:
+        urls:
+            - '%admin%'
+            - '%wp-admin%'
+            - '%.php%'
+            - '%sql%'
+      exports:
+        - format: json
+          filename: security-attacks.json
+          auto_open: false
+        - format: html
+          template: security-report
+          auto_open: true
+      charts:
+        - type: bar
+          title: Attack Patterns by IP
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+        - type: pie
+          title: Attack Types Distribution
+          width: 40
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: security-suspicious-ips
+      description: Find IP addresses with unusually high request rates or error patterns
+      category: security
+      query: SELECT ip, COUNT() as total_requests, COUNT(CASE WHEN status >= 400 THEN 1 END) as error_requests FROM logs GROUP BY ip HAVING total_requests > 100 OR error_requests > 10 ORDER BY total_requests DESC
+      filters: {}
+      exports:
+        - format: csv
+          filename: suspicious-ips.csv
+          auto_open: false
+      charts:
+        - type: bar
+          title: Request Volume by Suspicious IPs
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: performance-slow-endpoints
+      description: Identify slow-performing endpoints and large responses
+      category: performance
+      query: SELECT url, AVG(size) as avg_response_size, COUNT() as requests FROM logs WHERE status = 200 GROUP BY url HAVING avg_response_size > 50000 ORDER BY avg_response_size DESC LIMIT 20
+      filters:
+        status_codes:
+            - 200
+        min_size: 50000
+      exports:
+        - format: json
+          filename: slow-endpoints.json
+          auto_open: false
+        - format: html
+          template: performance-report
+          auto_open: true
+      charts:
+        - type: bar
+          title: Average Response Size by Endpoint
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+        - type: line
+          title: Performance Trend Over Time
+          width: 100
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: performance-error-analysis
+      description: Analyze error patterns and response time issues
+      category: performance
+      query: SELECT status, url, COUNT() as error_count FROM logs WHERE status >= 400 GROUP BY status, url ORDER BY error_count DESC LIMIT 20
+      filters:
+        status_codes:
+            - 400
+            - 401
+            - 403
+            - 404
+            - 500
+            - 502
+            - 503
+            - 504
+      exports:
+        - format: csv
+          filename: error-analysis.csv
+          auto_open: false
+      charts:
+        - type: pie
+          title: Error Distribution by Status Code
+          width: 60
+          height: 20
+          colors: true
+          enabled: true
+        - type: bar
+          title: Top Error URLs
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: performance-resource-usage
+      description: Monitor bandwidth usage and resource consumption patterns
+      category: performance
+      query: SELECT HOUR(timestamp) as hour, SUM(size) as total_bytes, COUNT() as requests FROM logs GROUP BY hour ORDER BY hour
+      filters: {}
+      exports:
+        - format: json
+          filename: resource-usage.json
+          auto_open: false
+      charts:
+        - type: line
+          title: Hourly Bandwidth Usage
+          width: 100
+          height: 20
+          colors: true
+          enabled: true
+        - type: bar
+          title: Requests per Hour
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: traffic-peak-analysis
+      description: Analyze traffic patterns and identify peak usage periods
+      category: traffic
+      query: SELECT HOUR(timestamp), COUNT() FROM logs GROUP BY HOUR(timestamp) ORDER BY HOUR(timestamp)
+      filters: {}
+      exports:
+        - format: json
+          filename: traffic-peaks.json
+          auto_open: false
+        - format: html
+          template: traffic-report
+          auto_open: true
+      charts:
+        - type: line
+          title: Hourly Traffic Pattern
+          width: 100
+          height: 20
+          colors: true
+          enabled: true
+        - type: bar
+          title: Unique Visitors by Hour
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: traffic-user-agents
+      description: Analyze user agent patterns and bot traffic identification
+      category: traffic
+      query: SELECT user_agent, COUNT() as requests FROM logs GROUP BY user_agent ORDER BY requests DESC LIMIT 20
+      filters: {}
+      exports:
+        - format: csv
+          filename: user-agents.csv
+          auto_open: false
+      charts:
+        - type: pie
+          title: Traffic by User Agent Type
+          width: 60
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: traffic-geographic
+      description: Geographic distribution analysis of traffic sources
+      category: traffic
+      query: SELECT ip, COUNT() as requests FROM logs WHERE NOT IS_PRIVATE_IP(ip) GROUP BY ip ORDER BY requests DESC LIMIT 30
+      filters: {}
+      exports:
+        - format: json
+          filename: geographic-traffic.json
+          auto_open: false
+      charts:
+        - type: bar
+          title: Traffic by Source IP
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: traffic-content-analysis
+      description: Analyze content type and resource access patterns
+      category: traffic
+      query: SELECT CASE WHEN url LIKE '%.css' THEN 'CSS' WHEN url LIKE '%.js' THEN 'JavaScript' WHEN url LIKE '%.png' OR url LIKE '%.jpg' OR url LIKE '%.gif' THEN 'Images' WHEN url LIKE '%.pdf' THEN 'Documents' ELSE 'Dynamic Content' END as content_type, COUNT() as requests, SUM(size) as total_bytes FROM logs GROUP BY content_type ORDER BY requests DESC
+      filters: {}
+      exports:
+        - format: json
+          filename: content-analysis.json
+          auto_open: false
+      charts:
+        - type: pie
+          title: Requests by Content Type
+          width: 60
+          height: 20
+          colors: true
+          enabled: true
+        - type: bar
+          title: Bandwidth by Content Type
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: simple-top-ips
+      description: Simple analysis of top requesting IP addresses
+      category: traffic
+      query: SELECT ip, COUNT() FROM logs GROUP BY ip ORDER BY COUNT() DESC LIMIT 10
+      filters: {}
+      exports:
+        - format: csv
+          filename: top-ips.csv
+          auto_open: false
+      charts:
+        - type: bar
+          title: Top IP Addresses
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+    - name: simple-status-codes
+      description: Simple analysis of HTTP status code distribution
+      category: performance
+      query: SELECT status, COUNT() FROM logs GROUP BY status ORDER BY COUNT() DESC
+      filters: {}
+      exports:
+        - format: json
+          filename: status-codes.json
+          auto_open: false
+      charts:
+        - type: bar
+          title: Status Code Distribution
+          width: 80
+          height: 20
+          colors: true
+          enabled: true
+      created_at: 2025-08-25T13:58:07.009737517+12:00
+      updated_at: 2025-08-25T13:58:07.009737517+12:00
+preferences:
+    default_export_dir: output
+    default_config_dir: config
+    auto_save: true
+    show_tips: true
+    theme: default
+    language: en
+    timezone: UTC
+    date_format: "2006-01-02"
+    time_format: "15:04:05"
+version: 1.0.0
