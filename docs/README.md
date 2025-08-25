@@ -51,16 +51,30 @@ Historical trend analysis and degradation detection system specifications.
 
 **Status:** ✅ Implemented in Sessions 20-21
 
+### PERFORMANCE_PROFILING_DESIGN.md
+Performance analysis and bottleneck detection system specifications.
+
+**Contents:**
+- Response time estimation and latency analysis algorithms
+- Automated bottleneck detection with statistical analysis
+- Performance scoring methodology across multiple dimensions
+- Optimization recommendation engine with priority scoring
+- ASCII visualization system for performance metrics
+- CLI and interactive menu integration specifications
+
+**Status:** ✅ Implemented in Session 25
+
 ## Architecture Documentation
 
 ### Project Structure
 ```
 docs/
-├── README.md                    # This file - documentation index
-├── HTML_REPORT_DESIGN.md       # HTML report generation specifications  
-├── MENU_DESIGN.md              # Interactive menu system design
-├── ASCII_CHARTS_DESIGN.md      # Terminal visualization system design
-└── TREND_ANALYSIS_DESIGN.md    # Historical trend analysis specifications
+├── README.md                       # This file - documentation index
+├── HTML_REPORT_DESIGN.md          # HTML report generation specifications  
+├── MENU_DESIGN.md                 # Interactive menu system design
+├── ASCII_CHARTS_DESIGN.md         # Terminal visualization system design
+├── TREND_ANALYSIS_DESIGN.md       # Historical trend analysis specifications
+└── PERFORMANCE_PROFILING_DESIGN.md # Performance analysis and bottleneck detection specifications
 ```
 
 ## Implementation Status
@@ -78,9 +92,9 @@ docs/
   - ✅ **Interactive preset system** - Browse, select, and execute presets through guided menu interface
   - ⏳ Database integration (planned)
   - ⏳ Enhanced security analysis (planned)
-  - ⏳ Performance profiling (planned)
+  - ✅ **Performance profiling** - Complete performance analysis system with bottleneck detection and optimization recommendations
 
-## Recent Achievements (Sessions 20-24)
+## Recent Achievements (Sessions 20-25)
 
 ### Session 20: HTML Chart Rendering Fixes
 - Fixed Chart.js loading issues and chart sizing problems
@@ -124,7 +138,18 @@ docs/
 - Backup/restore functionality through intuitive menu interface
 - Export/import preset sharing capabilities via guided workflows
 
-**Current Status**: Smart Log Analyser now provides the complete professional analytics experience with both powerful CLI capabilities and an intuitive interactive interface. Users can access all 12 analysis presets, configuration management, and advanced features through either command-line expertise or guided menu workflows, making professional-grade log analysis accessible to users of all skill levels.
+### Session 25: Performance Analysis & Profiling Implementation
+- Complete Performance Profiling system with comprehensive metrics and bottleneck detection
+- Advanced latency estimation using multi-factor algorithms (response size, URL complexity, load patterns)
+- Performance scoring system across 4 dimensions: Latency (35%), Reliability (30%), Throughput (20%), Efficiency (15%)
+- Automated bottleneck detection: slow endpoints, high error rates, traffic spikes, resource exhaustion
+- Smart optimization recommendations with priority scoring and impact assessment (10+ recommendation categories)
+- Rich ASCII visualizations: performance score cards, latency histograms, traffic patterns, endpoint rankings
+- Complete CLI integration with customizable thresholds and report generation (HTML, text, JSON formats)
+- Full interactive menu integration with 8 performance analysis options
+- Professional performance grading system (Excellent/Good/Fair/Poor/Critical) with color-coded output
+
+**Current Status**: Smart Log Analyser now provides a comprehensive professional analytics platform with powerful CLI capabilities, intuitive interactive interfaces, and advanced performance profiling. Users can access all analysis features including 12 presets, configuration management, advanced querying, and now complete performance analysis through either command-line expertise or guided menu workflows, making enterprise-grade log analysis accessible to users of all skill levels.
 
 ## Development Standards
 

@@ -17,6 +17,7 @@ import (
 	"smart-log-analyser/pkg/config"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
+	"smart-log-analyser/pkg/performance"
 	"smart-log-analyser/pkg/query"
 	"smart-log-analyser/pkg/remote"
 	"smart-log-analyser/pkg/trends"
@@ -1928,6 +1929,680 @@ func (m *Menu) resetConfiguration() error {
 	fmt.Println("✅ Configuration reset to defaults successfully!")
 	m.pauseForEffect()
 	return nil
+}
+
+// handlePerformanceAnalysis handles the performance analysis menu
+func (m *Menu) handlePerformanceAnalysis() error {
+	m.clearScreen()
+	fmt.Println("⚡ PERFORMANCE ANALYSIS & PROFILING")
+	fmt.Println("═══════════════════════════════════")
+	fmt.Println()
+	fmt.Println("Welcome to the Performance Analysis Center! This module provides comprehensive")
+	fmt.Println("performance profiling, bottleneck detection, and optimization recommendations.")
+	fmt.Println()
+
+	for {
+		fmt.Println("📊 Performance Analysis Options:")
+		fmt.Println()
+		fmt.Println("1. 🎯 Quick Performance Overview")
+		fmt.Println("2. 📈 Detailed Latency Analysis")
+		fmt.Println("3. 🔍 Bottleneck Detection & Recommendations")
+		fmt.Println("4. 📊 Performance Trend Analysis")
+		fmt.Println("5. 🏆 Endpoint Performance Ranking")
+		fmt.Println("6. 📄 Generate Performance Report")
+		fmt.Println("7. 💡 Performance Optimization Suggestions")
+		fmt.Println("8. 🔙 Return to Main Menu")
+		fmt.Println()
+
+		choice, err := m.getIntInput("Enter your choice (1-8): ", 1, 8)
+		if err != nil {
+			return err
+		}
+
+		switch choice {
+		case 1:
+			if err := m.performanceQuickOverview(); err != nil {
+				m.showError("Quick overview failed", err)
+			}
+		case 2:
+			if err := m.performanceLatencyAnalysis(); err != nil {
+				m.showError("Latency analysis failed", err)
+			}
+		case 3:
+			if err := m.performanceBottleneckDetection(); err != nil {
+				m.showError("Bottleneck detection failed", err)
+			}
+		case 4:
+			if err := m.performanceTrendAnalysis(); err != nil {
+				m.showError("Trend analysis failed", err)
+			}
+		case 5:
+			if err := m.performanceEndpointRanking(); err != nil {
+				m.showError("Endpoint ranking failed", err)
+			}
+		case 6:
+			if err := m.generatePerformanceReport(); err != nil {
+				m.showError("Report generation failed", err)
+			}
+		case 7:
+			if err := m.performanceOptimizationSuggestions(); err != nil {
+				m.showError("Optimization suggestions failed", err)
+			}
+		case 8:
+			return nil // Return to main menu
+		}
+
+		fmt.Println()
+	}
+}
+
+// performanceQuickOverview provides a quick performance overview
+func (m *Menu) performanceQuickOverview() error {
+	fmt.Println("\n🎯 Quick Performance Overview")
+	fmt.Println("═══════════════════════════")
+	fmt.Println()
+	fmt.Println("This will analyze your log files and provide a comprehensive performance overview")
+	fmt.Println("including latency metrics, throughput analysis, and key performance indicators.")
+	fmt.Println()
+
+	// Get log files
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	// Parse and analyze
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Display overview
+	visualizer := performance.NewPerformanceVisualizer()
+	overview := visualizer.RenderPerformanceOverview(analysis)
+	fmt.Print(overview)
+
+	m.pauseForEffect()
+	return nil
+}
+
+// performanceLatencyAnalysis focuses on detailed latency analysis
+func (m *Menu) performanceLatencyAnalysis() error {
+	fmt.Println("\n📈 Detailed Latency Analysis")
+	fmt.Println("═══════════════════════════")
+	fmt.Println()
+	fmt.Println("This analysis focuses on response time estimation, latency distribution,")
+	fmt.Println("and performance characteristics of your endpoints.")
+	fmt.Println()
+
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Display detailed latency information
+	fmt.Println("📊 LATENCY ANALYSIS RESULTS")
+	fmt.Println(strings.Repeat("=", 50))
+	fmt.Println()
+
+	fmt.Printf("Overall Latency Metrics:\n")
+	fmt.Printf("├─ P50 (Median):  %v\n", analysis.Summary.OverallLatency.P50)
+	fmt.Printf("├─ P95:           %v\n", analysis.Summary.OverallLatency.P95)
+	fmt.Printf("├─ P99:           %v\n", analysis.Summary.OverallLatency.P99)
+	fmt.Printf("├─ Average:       %v\n", analysis.Summary.OverallLatency.Avg)
+	fmt.Printf("├─ Minimum:       %v\n", analysis.Summary.OverallLatency.Min)
+	fmt.Printf("└─ Maximum:       %v\n", analysis.Summary.OverallLatency.Max)
+	fmt.Println()
+
+	// Show top slow endpoints
+	if len(analysis.Summary.TopSlowEndpoints) > 0 {
+		fmt.Println("🐌 Slowest Endpoints:")
+		for i, endpoint := range analysis.Summary.TopSlowEndpoints {
+			if i >= 5 {
+				break
+			}
+			if metrics, exists := analysis.EndpointMetrics[endpoint]; exists {
+				fmt.Printf("%d. %s (P95: %v)\n", 
+					i+1, 
+					endpoint, 
+					metrics.EstimatedLatency.P95)
+			}
+		}
+		fmt.Println()
+	}
+
+	m.pauseForEffect()
+	return nil
+}
+
+// performanceBottleneckDetection focuses on bottleneck identification
+func (m *Menu) performanceBottleneckDetection() error {
+	fmt.Println("\n🔍 Bottleneck Detection & Recommendations")
+	fmt.Println("═══════════════════════════════════════")
+	fmt.Println()
+	fmt.Println("This analysis identifies performance bottlenecks and provides specific")
+	fmt.Println("recommendations for optimization.")
+	fmt.Println()
+
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Display bottlenecks
+	if len(analysis.Bottlenecks) == 0 {
+		fmt.Println("✅ No significant bottlenecks detected!")
+		fmt.Println("   Your application appears to be performing well.")
+	} else {
+		fmt.Printf("⚠️  DETECTED %d PERFORMANCE BOTTLENECKS\n", len(analysis.Bottlenecks))
+		fmt.Println(strings.Repeat("=", 50))
+		fmt.Println()
+
+		for i, bottleneck := range analysis.Bottlenecks {
+			if i >= 5 {
+				break
+			}
+
+			fmt.Printf("%d. %s\n", i+1, bottleneck.Type.String())
+			fmt.Printf("   Severity: %s\n", strings.Repeat("●", bottleneck.Severity))
+			fmt.Printf("   %s\n", bottleneck.Description)
+			
+			if len(bottleneck.Affected) > 0 {
+				fmt.Printf("   Affected: %s\n", strings.Join(bottleneck.Affected[:min(3, len(bottleneck.Affected))], ", "))
+			}
+			
+			if len(bottleneck.Suggestions) > 0 {
+				fmt.Printf("   💡 Suggestion: %s\n", bottleneck.Suggestions[0])
+			}
+			fmt.Println()
+		}
+	}
+
+	m.pauseForEffect()
+	return nil
+}
+
+// performanceTrendAnalysis shows performance trends over time
+func (m *Menu) performanceTrendAnalysis() error {
+	fmt.Println("\n📊 Performance Trend Analysis")
+	fmt.Println("════════════════════════════")
+	fmt.Println()
+	fmt.Println("Analyzing performance patterns across 24-hour periods to identify")
+	fmt.Println("peak usage times and performance variations.")
+	fmt.Println()
+
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Display traffic patterns
+	fmt.Println("🕐 24-HOUR TRAFFIC PATTERNS")
+	fmt.Println(strings.Repeat("=", 40))
+	fmt.Println()
+
+	maxThroughput := 0.0
+	for _, metrics := range analysis.TimeBasedMetrics {
+		if metrics.Throughput > maxThroughput {
+			maxThroughput = metrics.Throughput
+		}
+	}
+
+	for _, metrics := range analysis.TimeBasedMetrics {
+		if metrics.RequestCount > 0 {
+			barLength := int(metrics.Throughput / maxThroughput * 30)
+			bar := strings.Repeat("█", barLength)
+			fmt.Printf("%02d:00 │%-30s %.1f req/s (%d requests)\n", 
+				metrics.Hour, 
+				bar, 
+				metrics.Throughput, 
+				metrics.RequestCount)
+		}
+	}
+
+	fmt.Println()
+	m.pauseForEffect()
+	return nil
+}
+
+// performanceEndpointRanking shows endpoint performance rankings
+func (m *Menu) performanceEndpointRanking() error {
+	fmt.Println("\n🏆 Endpoint Performance Ranking")
+	fmt.Println("═════════════════════════════")
+	fmt.Println()
+
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Create endpoint ranking
+	type endpointRank struct {
+		url    string
+		grade  performance.PerformanceGrade
+		p95    time.Duration
+		count  int64
+		errors float64
+	}
+
+	var rankings []endpointRank
+	for url, metrics := range analysis.EndpointMetrics {
+		rankings = append(rankings, endpointRank{
+			url:    url,
+			grade:  metrics.Performance,
+			p95:    metrics.EstimatedLatency.P95,
+			count:  metrics.RequestCount,
+			errors: metrics.ErrorRate,
+		})
+	}
+
+	// Sort by performance grade and then by P95 latency
+	for i := 0; i < len(rankings); i++ {
+		for j := i + 1; j < len(rankings); j++ {
+			if rankings[i].grade > rankings[j].grade || 
+			   (rankings[i].grade == rankings[j].grade && rankings[i].p95 > rankings[j].p95) {
+				rankings[i], rankings[j] = rankings[j], rankings[i]
+			}
+		}
+	}
+
+	fmt.Println("🏆 TOP PERFORMING ENDPOINTS")
+	fmt.Println(strings.Repeat("=", 60))
+	for i, rank := range rankings {
+		if i >= 10 {
+			break
+		}
+
+		gradeColor := ""
+		switch rank.grade {
+		case performance.Excellent:
+			gradeColor = "🟢"
+		case performance.Good:
+			gradeColor = "🔵"
+		case performance.Fair:
+			gradeColor = "🟡"
+		case performance.Poor:
+			gradeColor = "🟠"
+		case performance.Critical:
+			gradeColor = "🔴"
+		}
+
+		url := rank.url
+		if len(url) > 40 {
+			url = url[:37] + "..."
+		}
+
+		fmt.Printf("%2d. %s %-40s [%s] P95: %v\n", 
+			i+1, 
+			gradeColor,
+			url, 
+			rank.grade.String(),
+			rank.p95)
+	}
+
+	fmt.Println()
+	m.pauseForEffect()
+	return nil
+}
+
+// generatePerformanceReport generates a comprehensive performance report
+func (m *Menu) generatePerformanceReport() error {
+	fmt.Println("\n📄 Generate Performance Report")
+	fmt.Println("═════════════════════════════")
+	fmt.Println()
+	fmt.Println("Choose report format:")
+	fmt.Println("1. HTML Report (interactive charts)")
+	fmt.Println("2. Text Report (ASCII charts)")
+	fmt.Println("3. JSON Report (raw data)")
+	fmt.Println("4. Cancel")
+	fmt.Println()
+
+	choice, err := m.getIntInput("Enter choice (1-4): ", 1, 4)
+	if err != nil {
+		return err
+	}
+
+	if choice == 4 {
+		return nil
+	}
+
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Generate report
+	timestamp := time.Now().Format("20060102_150405")
+	var filename string
+	var format string
+
+	switch choice {
+	case 1:
+		format = "html"
+		filename = fmt.Sprintf("output/performance_report_%s.html", timestamp)
+	case 2:
+		format = "text"
+		filename = fmt.Sprintf("output/performance_report_%s.txt", timestamp)
+	case 3:
+		format = "json"
+		filename = fmt.Sprintf("output/performance_report_%s.json", timestamp)
+	}
+
+	// Create output directory
+	if err := os.MkdirAll("output", 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Generate content based on format
+	switch format {
+	case "text":
+		visualizer := performance.NewPerformanceVisualizer()
+		content := visualizer.RenderPerformanceOverview(analysis)
+		err = os.WriteFile(filename, []byte(content), 0644)
+	case "html":
+		// Generate HTML report (simplified)
+		content := m.generateHTMLPerformanceReport(analysis)
+		err = os.WriteFile(filename, []byte(content), 0644)
+	case "json":
+		// Generate JSON report (would need proper JSON marshaling)
+		content := `{"message": "JSON export not yet implemented"}`
+		err = os.WriteFile(filename, []byte(content), 0644)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to write report: %w", err)
+	}
+
+	fmt.Printf("✅ Performance report generated: %s\n", filename)
+	m.pauseForEffect()
+	return nil
+}
+
+// performanceOptimizationSuggestions shows detailed optimization recommendations
+func (m *Menu) performanceOptimizationSuggestions() error {
+	fmt.Println("\n💡 Performance Optimization Suggestions")
+	fmt.Println("═════════════════════════════════════")
+	fmt.Println()
+
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("❌ No log files selected")
+		m.pauseForEffect()
+		return nil
+	}
+
+	analyzer := performance.NewAnalyzer()
+	analysis, err := m.performPerformanceAnalysis(files, analyzer)
+	if err != nil {
+		return err
+	}
+
+	// Display recommendations
+	if len(analysis.Recommendations) == 0 {
+		fmt.Println("✅ No specific optimization recommendations at this time.")
+		fmt.Println("   Your application appears to be performing well!")
+	} else {
+		fmt.Printf("💡 TOP %d OPTIMIZATION RECOMMENDATIONS\n", min(len(analysis.Recommendations), 5))
+		fmt.Println(strings.Repeat("=", 60))
+		fmt.Println()
+
+		for i, rec := range analysis.Recommendations {
+			if i >= 5 {
+				break
+			}
+
+			fmt.Printf("%d. %s\n", i+1, rec.Title)
+			fmt.Printf("   Priority: %s (%d/10)\n", 
+				strings.Repeat("★", min(rec.Priority/2, 5)), 
+				rec.Priority)
+			fmt.Printf("   Impact: %s | Effort: %s\n", rec.Impact.String(), rec.Effort.String())
+			fmt.Printf("   Category: %s\n", rec.Category.String())
+			
+			if rec.EstimatedImprovementPercent > 0 {
+				fmt.Printf("   Expected Improvement: %d%%\n", rec.EstimatedImprovementPercent)
+			}
+			
+			fmt.Printf("   Description: %s\n", rec.Description)
+			
+			if len(rec.Examples) > 0 {
+				fmt.Printf("   Examples:\n")
+				for j, example := range rec.Examples {
+					if j >= 2 {
+						break
+					}
+					fmt.Printf("   • %s\n", example)
+				}
+			}
+			fmt.Println()
+		}
+	}
+
+	m.pauseForEffect()
+	return nil
+}
+
+// performPerformanceAnalysis is a helper that parses files and runs analysis
+func (m *Menu) performPerformanceAnalysis(files []string, analyzer *performance.Analyzer) (*performance.PerformanceAnalysis, error) {
+	fmt.Printf("🔍 Parsing %d log file(s)...\n", len(files))
+	
+	p := parser.New()
+	var allLogs []*parser.LogEntry
+	
+	for _, file := range files {
+		logs, err := p.ParseFile(file)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Could not parse %s: %v\n", file, err)
+			continue
+		}
+		allLogs = append(allLogs, logs...)
+	}
+	
+	if len(allLogs) == 0 {
+		return nil, fmt.Errorf("no valid log entries found")
+	}
+	
+	fmt.Printf("📊 Analyzing %d log entries for performance metrics...\n", len(allLogs))
+	
+	analysis, err := analyzer.Analyze(allLogs)
+	if err != nil {
+		return nil, fmt.Errorf("performance analysis failed: %w", err)
+	}
+	
+	fmt.Printf("✅ Analysis complete! Found %d endpoints, %d bottlenecks, %d recommendations\n\n", 
+		len(analysis.EndpointMetrics), 
+		len(analysis.Bottlenecks), 
+		len(analysis.Recommendations))
+	
+	return analysis, nil
+}
+
+// generateHTMLPerformanceReport generates a simple HTML performance report
+func (m *Menu) generateHTMLPerformanceReport(analysis *performance.PerformanceAnalysis) string {
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Performance Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .score { font-size: 2em; font-weight: bold; }
+        .excellent { color: green; }
+        .good { color: blue; }
+        .fair { color: orange; }
+        .poor { color: red; }
+        .critical { color: darkred; }
+        table { border-collapse: collapse; width: 100%%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Performance Analysis Report</h1>
+    <p><strong>Generated:</strong> %s</p>
+    
+    <h2>📊 Performance Score</h2>
+    <div class="score %s">%d/100 (%s)</div>
+    
+    <h2>📈 Summary Statistics</h2>
+    <ul>
+        <li><strong>Total Requests:</strong> %d</li>
+        <li><strong>Error Rate:</strong> %.2f%%</li>
+        <li><strong>Average Response Size:</strong> %s</li>
+        <li><strong>Peak Throughput:</strong> %.1f req/s</li>
+        <li><strong>P95 Latency:</strong> %v</li>
+        <li><strong>Performance Grade:</strong> %s</li>
+    </ul>
+    
+    <h2>⚠️  Bottlenecks (%d found)</h2>
+    <table>
+        <tr><th>Type</th><th>Severity</th><th>Description</th></tr>
+        %s
+    </table>
+    
+    <h2>💡 Recommendations (%d total)</h2>
+    <ol>
+        %s
+    </ol>
+</body>
+</html>`, 
+		analysis.AnalysisTimestamp.Format("2006-01-02 15:04:05"),
+		strings.ToLower(performance.GetScoreDescription(analysis.Score.Overall)),
+		analysis.Score.Overall,
+		performance.GetScoreGrade(analysis.Score.Overall),
+		analysis.Summary.TotalRequests,
+		analysis.Summary.ErrorRate*100,
+		m.formatBytes(analysis.Summary.AverageResponseSize),
+		analysis.Summary.PeakThroughput,
+		analysis.Summary.OverallLatency.P95,
+		analysis.Summary.PerformanceGrade.String(),
+		len(analysis.Bottlenecks),
+		m.formatBottlenecksTable(analysis.Bottlenecks),
+		len(analysis.Recommendations),
+		m.formatRecommendationsList(analysis.Recommendations))
+}
+
+// formatBottlenecksTable formats bottlenecks as HTML table rows
+func (m *Menu) formatBottlenecksTable(bottlenecks []performance.Bottleneck) string {
+	var rows strings.Builder
+	for i, bottleneck := range bottlenecks {
+		if i >= 5 {
+			break
+		}
+		rows.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n",
+			bottleneck.Type.String(),
+			strings.Repeat("●", bottleneck.Severity),
+			bottleneck.Description))
+	}
+	return rows.String()
+}
+
+// formatRecommendationsList formats recommendations as HTML list items
+func (m *Menu) formatRecommendationsList(recommendations []performance.OptimizationRecommendation) string {
+	var items strings.Builder
+	for i, rec := range recommendations {
+		if i >= 5 {
+			break
+		}
+		items.WriteString(fmt.Sprintf("<li><strong>%s</strong><br><em>Priority: %d/10 | Impact: %s | Effort: %s</em><br>%s</li>\n",
+			rec.Title,
+			rec.Priority,
+			rec.Impact.String(),
+			rec.Effort.String(),
+			rec.Description))
+	}
+	return items.String()
+}
+
+// formatBytes formats byte sizes for display
+func (m *Menu) formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 

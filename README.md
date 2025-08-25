@@ -42,6 +42,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Historical trend analysis** (Compare periods, track degradation, automated alerting)
 - [x] **Advanced query language for complex filtering** (SQL-like query language with filtering, aggregation, and functions)
 - [x] **Configuration management and presets** (12 built-in analysis presets, 5 report templates, user preferences)
+- [x] **Performance Analysis & Profiling** (Comprehensive performance metrics, bottleneck detection, optimization recommendations)
 - [ ] Database integration (SQLite, PostgreSQL export)
 - [ ] Plugin architecture for custom analyzers
 
@@ -89,6 +90,7 @@ Smart Log Analyser now features an **interactive menu system** that launches whe
 ### Menu Features
 - **📂 Analyse Local Log Files**: Browse and select log files with guided analysis
 - **🌐 Download & Analyse Remote Logs**: Manage remote server connections and downloads
+- **⚡ Performance Analysis & Profiling**: Comprehensive performance analysis with bottleneck detection and optimization recommendations
 - **📈 Generate HTML Report**: Create interactive reports with custom settings
 - **🔧 Configuration & Setup**: Complete configuration management with presets, templates, and preferences
 - **📚 Help & Documentation**: Built-in help and guidance
@@ -766,6 +768,116 @@ Accepts one or more log files for analysis. When multiple files are provided, th
 - `--config`: Path to SSH configuration file (default: "servers.json")
 - `--server`: Specific server to download from (host name)
 - `--output`: Directory to save downloaded files (default: "./downloads")
+
+## Performance Analysis & Profiling ⚡
+
+The Performance Analysis & Profiling system provides comprehensive performance monitoring, bottleneck detection, and optimization recommendations for your web applications.
+
+### Key Features
+
+#### 🎯 Performance Metrics & Scoring
+- **Response Time Analysis**: Multi-factor latency estimation using response size, URL complexity, and load patterns
+- **Performance Scoring**: 0-100 scoring system across four dimensions:
+  - **Latency** (35% weight): P50, P95, P99 response time analysis
+  - **Reliability** (30% weight): Error rate analysis and stability metrics
+  - **Throughput** (20% weight): Request volume handling and capacity analysis  
+  - **Efficiency** (15% weight): Resource utilization and optimization metrics
+- **Performance Grades**: Automatic classification (Excellent/Good/Fair/Poor/Critical)
+
+#### 🔍 Bottleneck Detection
+Automated identification of performance issues:
+- **Slow Endpoints**: Statistical analysis to identify underperforming URLs
+- **High Error Rates**: Detection of reliability issues and failure patterns
+- **Traffic Spikes**: Unusual load pattern identification and capacity analysis
+- **Resource Exhaustion**: Large response detection and bandwidth optimization opportunities
+
+#### 💡 Optimization Recommendations
+Smart, prioritized suggestions with impact assessment:
+- **Caching Optimization**: High-traffic endpoint caching recommendations
+- **Database Optimization**: Query performance and indexing suggestions
+- **Static Asset Optimization**: Compression and CDN recommendations
+- **Infrastructure Scaling**: Load balancing and capacity planning guidance
+- **Error Reduction**: Reliability improvement strategies
+
+#### 📊 Visual Analysis
+Rich terminal-based visualizations:
+- **Performance Score Cards**: Visual performance ratings with color-coded bars
+- **Latency Distribution Histograms**: Response time distribution analysis
+- **24-Hour Traffic Patterns**: Hourly traffic analysis with peak detection
+- **Endpoint Performance Rankings**: Top/bottom performing URL identification
+
+### CLI Usage
+
+```bash
+# Basic performance analysis
+./smart-log-analyser performance access.log
+
+# With custom thresholds
+./smart-log-analyser performance access.log \
+  --excellent-threshold 50ms \
+  --good-threshold 200ms \
+  --latency-threshold 1s
+
+# Generate performance reports
+./smart-log-analyser performance access.log --export-report --report-format html
+
+# Advanced bottleneck detection
+./smart-log-analyser performance access.log --bottleneck-sensitivity 9
+```
+
+### Interactive Menu System
+
+Access performance analysis through the main menu:
+
+```
+⚡ Performance Analysis & Profiling
+═══════════════════════════════════
+
+📊 Performance Analysis Options:
+
+1. 🎯 Quick Performance Overview
+2. 📈 Detailed Latency Analysis  
+3. 🔍 Bottleneck Detection & Recommendations
+4. 📊 Performance Trend Analysis
+5. 🏆 Endpoint Performance Ranking
+6. 📄 Generate Performance Report
+7. 💡 Performance Optimization Suggestions
+8. 🔙 Return to Main Menu
+```
+
+### Performance Analysis Workflow
+
+1. **Select Performance Analysis** from main menu
+2. **Choose analysis type** (Quick Overview, Detailed Latency, etc.)
+3. **Select log files** using file browser or manual entry
+4. **Review comprehensive results** with visualizations and recommendations
+5. **Generate reports** for stakeholder sharing or historical tracking
+
+### Sample Output
+
+```
+🎯 Performance Score Card
+Overall:     ████████████████████░░░░░░░░░░░░░░░░░░░░  82 (B)
+Latency:     ██████████████████████████████████████   95
+Throughput:  ███████████████████████████░░░░░░░░░░░░   75
+Reliability: ████████████████████████████████░░░░░░   85
+Efficiency:  ██████████████████████████████████████   90
+
+📊 LATENCY ANALYSIS RESULTS
+P95 Latency: 245ms | Performance Grade: Good | Error Rate: 1.2%
+
+💡 TOP OPTIMIZATION RECOMMENDATIONS
+1. Implement Caching Strategy (Priority: 8/10)
+   Impact: High | Effort: Medium | Est. Improvement: 35%
+   Cache candidates: /api/products, /api/users, /dashboard
+```
+
+### Report Generation
+
+Performance reports can be exported in multiple formats:
+- **HTML Reports**: Interactive charts with Chart.js visualizations
+- **Text Reports**: ASCII charts and formatted analysis for terminal viewing
+- **JSON Reports**: Raw performance data for integration with other tools
 
 ## Advanced Query Language (SLAQ)
 
