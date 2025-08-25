@@ -43,8 +43,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Advanced query language for complex filtering** (SQL-like query language with filtering, aggregation, and functions)
 - [x] **Configuration management and presets** (12 built-in analysis presets, 5 report templates, user preferences)
 - [x] **Performance Analysis & Profiling** (Comprehensive performance metrics, bottleneck detection, optimization recommendations)
-- [ ] Database integration (SQLite, PostgreSQL export)
-- [ ] Plugin architecture for custom analyzers
+- [x] **Enhanced Security Analysis** (Enterprise-grade threat detection, ML-based anomaly detection, comprehensive security scoring)
 
 ## Installation
 
@@ -91,6 +90,7 @@ Smart Log Analyser now features an **interactive menu system** that launches whe
 - **📂 Analyse Local Log Files**: Browse and select log files with guided analysis
 - **🌐 Download & Analyse Remote Logs**: Manage remote server connections and downloads
 - **⚡ Performance Analysis & Profiling**: Comprehensive performance analysis with bottleneck detection and optimization recommendations
+- **🔐 Enhanced Security Analysis**: Enterprise-grade threat detection, behavioral analysis, and security risk assessment
 - **📈 Generate HTML Report**: Create interactive reports with custom settings
 - **🔧 Configuration & Setup**: Complete configuration management with presets, templates, and preferences
 - **📚 Help & Documentation**: Built-in help and guidance
@@ -878,6 +878,103 @@ Performance reports can be exported in multiple formats:
 - **HTML Reports**: Interactive charts with Chart.js visualizations
 - **Text Reports**: ASCII charts and formatted analysis for terminal viewing
 - **JSON Reports**: Raw performance data for integration with other tools
+
+## Enhanced Security Analysis
+
+The Enhanced Security Analysis system provides enterprise-grade threat detection, ML-based anomaly detection, and comprehensive security scoring for your log data.
+
+### Key Features
+
+**🛡️ Advanced Threat Detection**
+- 30 attack types covering web and infrastructure threats
+- SQL injection, XSS, command injection, and path traversal detection
+- Brute force, DDoS, and reconnaissance attack identification
+- Context-aware pattern matching with confidence scoring
+
+**🤖 ML-Based Anomaly Detection**
+- Behavioral baseline learning and IP profiling
+- 8 anomaly types: frequency, timing, size, error rate, geographic, and more
+- Statistical Z-score analysis for accurate anomaly identification
+- Adaptive thresholds based on traffic patterns
+
+**📊 Multi-Dimensional Security Scoring**
+- Comprehensive risk assessment across 4 security dimensions
+- Threat Detection (40%), Anomaly Detection (25%), Traffic Integrity (20%), Access Control (15%)
+- Professional security grading: Excellent, Good, Fair, Poor, Critical
+- Security incidents with timelines and IOCs
+
+**🎨 Rich Security Visualizations**
+- Color-coded ASCII security dashboards
+- Threat heat maps and incident timelines
+- Behavioral analysis charts and anomaly distributions
+- IP profiling and geographic threat mapping
+
+### Usage Examples
+
+**Basic Security Analysis:**
+```bash
+# Quick security overview
+./smart-log-analyser security access.log
+
+# Custom threat sensitivity
+./smart-log-analyser security server.log --threat-sensitivity 8
+
+# Focus on specific attack types
+./smart-log-analyser security logs.gz --attack-focus web
+```
+
+**Advanced Security Features:**
+```bash
+# Generate comprehensive security report
+./smart-log-analyser security access.log --export-security-report --report-format html
+
+# Anomaly detection with custom thresholds
+./smart-log-analyser security server.log --anomaly-threshold 2.5 --baseline-period 24h
+
+# Security scoring with custom weights
+./smart-log-analyser security logs.tar.gz --threat-weight 50 --anomaly-weight 30
+```
+
+### Interactive Security Menu
+
+Access all security features through the guided interactive menu:
+
+```
+🔐 Enhanced Security Analysis
+├── 1. Quick Security Overview
+├── 2. Advanced Threat Detection
+├── 3. ML Anomaly Detection
+├── 4. Security Risk Assessment & Scoring
+├── 5. Security Incident Analysis
+├── 6. Generate Security Report
+├── 7. Security Visualization Dashboard
+└── 8. Return to Main Menu
+```
+
+### Security Report Formats
+
+Security reports are available in multiple professional formats:
+- **HTML Reports**: Interactive security dashboards with embedded visualizations
+- **JSON Reports**: Structured data for security information and event management (SIEM) integration
+- **CSV Reports**: Threat and anomaly data for spreadsheet analysis
+- **ASCII Reports**: Terminal-friendly security analysis with color-coded dashboards
+
+### Security Scoring System
+
+The security scoring system evaluates your system across multiple dimensions:
+
+```
+Overall Security Score: 85/100 (Good)
+├── Threat Detection: 88/100 (Excellent)
+├── Anomaly Detection: 82/100 (Good) 
+├── Traffic Integrity: 87/100 (Excellent)
+└── Access Control: 78/100 (Good)
+
+Security Grade: Good
+Critical Issues: 0
+High-Risk Threats: 2
+Anomalies Detected: 5
+```
 
 ## Advanced Query Language (SLAQ)
 

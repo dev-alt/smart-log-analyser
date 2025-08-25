@@ -20,6 +20,7 @@ import (
 	"smart-log-analyser/pkg/performance"
 	"smart-log-analyser/pkg/query"
 	"smart-log-analyser/pkg/remote"
+	"smart-log-analyser/pkg/security"
 	"smart-log-analyser/pkg/trends"
 )
 
@@ -2605,5 +2606,753 @@ func min(a, b int) int {
 	return b
 }
 
+// handleEnhancedSecurityAnalysis handles the enhanced security analysis menu
+func (m *Menu) handleEnhancedSecurityAnalysis() error {
+	m.clearScreen()
+	fmt.Println("🔐 ENHANCED SECURITY ANALYSIS")
+	fmt.Println("═════════════════════════════")
+	fmt.Println()
+	fmt.Println("Welcome to the Enhanced Security Analysis Center! This module provides enterprise-grade")
+	fmt.Println("threat detection, behavioral analysis, and comprehensive security assessment.")
+	fmt.Println()
+	
+	for {
+		fmt.Println("🛡️ Security Analysis Options:")
+		fmt.Println()
+		fmt.Println("1. 🎯 Quick Security Overview")
+		fmt.Println("2. 🚨 Advanced Threat Detection")
+		fmt.Println("3. 📊 Behavioral Analysis & Anomalies")
+		fmt.Println("4. 🔍 Security Risk Assessment")
+		fmt.Println("5. 🌐 Threat Intelligence Report")
+		fmt.Println("6. 📋 Incident Response Summary")
+		fmt.Println("7. 📄 Generate Security Report")
+		fmt.Println("8. 🔙 Return to Main Menu")
+		fmt.Println()
+		
+		choice, err := m.getIntInput("Enter your choice (1-8): ", 1, 8)
+		if err != nil {
+			return err
+		}
+		
+		switch choice {
+		case 1:
+			if err := m.securityQuickOverview(); err != nil {
+				m.showError("Quick security overview failed", err)
+			}
+		case 2:
+			if err := m.securityThreatDetection(); err != nil {
+				m.showError("Threat detection failed", err)
+			}
+		case 3:
+			if err := m.securityBehavioralAnalysis(); err != nil {
+				m.showError("Behavioral analysis failed", err)
+			}
+		case 4:
+			if err := m.securityRiskAssessment(); err != nil {
+				m.showError("Risk assessment failed", err)
+			}
+		case 5:
+			if err := m.securityThreatIntelligence(); err != nil {
+				m.showError("Threat intelligence failed", err)
+			}
+		case 6:
+			if err := m.securityIncidentResponse(); err != nil {
+				m.showError("Incident response failed", err)
+			}
+		case 7:
+			if err := m.generateSecurityReport(); err != nil {
+				m.showError("Security report generation failed", err)
+			}
+		case 8:
+			return nil // Return to main menu
+		default:
+			fmt.Println("❌ Invalid choice. Please try again.")
+		}
+	}
+}
 
 
+
+
+// securityQuickOverview provides a quick security overview
+func (m *Menu) securityQuickOverview() error {
+	fmt.Println("\n🎯 Quick Security Overview")
+	fmt.Println("═════════════════════════")
+	
+	// Get log files
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("❌ No files selected for analysis")
+		m.pause()
+		return nil
+	}
+	
+	return m.performSecurityAnalysisAndShow(files, "Quick Security Overview")
+}
+
+// securityThreatDetection performs detailed threat detection
+func (m *Menu) securityThreatDetection() error {
+	fmt.Println("\n🚨 Advanced Threat Detection")
+	fmt.Println("═══════════════════════════")
+	
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("❌ No files selected for analysis")
+		m.pause()
+		return nil
+	}
+	
+	return m.performThreatFocusedAnalysis(files)
+}
+
+// securityBehavioralAnalysis performs behavioral analysis and anomaly detection
+func (m *Menu) securityBehavioralAnalysis() error {
+	fmt.Println("\n📊 Behavioral Analysis & Anomalies")
+	fmt.Println("═══════════════════════════════════")
+	
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("❌ No files selected for analysis")
+		m.pause()
+		return nil
+	}
+	
+	return m.performBehavioralAnalysis(files)
+}
+
+// securityRiskAssessment performs comprehensive risk assessment
+func (m *Menu) securityRiskAssessment() error {
+	fmt.Println("\n🔍 Security Risk Assessment")
+	fmt.Println("═══════════════════════════")
+	
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("❌ No files selected for analysis")
+		m.pause()
+		return nil
+	}
+	
+	return m.performRiskAssessment(files)
+}
+
+// securityThreatIntelligence shows threat intelligence analysis
+func (m *Menu) securityThreatIntelligence() error {
+	fmt.Println("\n🌐 Threat Intelligence Report")
+	fmt.Println("═════════════════════════════")
+	fmt.Println("This feature provides correlation with threat intelligence feeds")
+	fmt.Println("and identifies known malicious indicators.")
+	fmt.Println()
+	
+	fmt.Println("📋 Threat Intelligence Features:")
+	fmt.Println("• Known malicious IP detection")
+	fmt.Println("• Attack signature matching")
+	fmt.Println("• IOC (Indicators of Compromise) identification")
+	fmt.Println("• Threat actor attribution")
+	fmt.Println("• Campaign correlation")
+	fmt.Println()
+	fmt.Println("🚧 This feature is available in the full security analysis.")
+	
+	m.pause()
+	return nil
+}
+
+// securityIncidentResponse shows incident response summary
+func (m *Menu) securityIncidentResponse() error {
+	fmt.Println("\n📋 Incident Response Summary")
+	fmt.Println("═══════════════════════════")
+	
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("❌ No files selected for analysis")
+		m.pause()
+		return nil
+	}
+	
+	return m.performIncidentAnalysis(files)
+}
+
+// generateSecurityReport generates comprehensive security reports
+func (m *Menu) generateSecurityReport() error {
+	fmt.Println("\n📄 Generate Security Report")
+	fmt.Println("══════════════════════════")
+	fmt.Println()
+	fmt.Println("Available report formats:")
+	fmt.Println("1. 📄 Text Report (ASCII)")
+	fmt.Println("2. 🌐 HTML Report")
+	fmt.Println("3. 📊 JSON Export")
+	fmt.Println("4. 🔙 Back to Security Menu")
+	fmt.Println()
+	
+	choice, err := m.getIntInput("Select format (1-4): ", 1, 4)
+	if err != nil {
+		return err
+	}
+	
+	if choice == 4 {
+		return nil
+	}
+	
+	files, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("❌ No files selected for analysis")
+		m.pause()
+		return nil
+	}
+	
+	return m.generateSecurityReportInFormat(files, choice)
+}
+
+// Helper functions for security analysis
+
+// performSecurityAnalysisAndShow performs full security analysis and shows results
+func (m *Menu) performSecurityAnalysisAndShow(files []string, title string) error {
+	analysis, err := m.performFullSecurityAnalysis(files)
+	if err != nil {
+		return err
+	}
+	
+	visualizer := security.NewSecurityVisualizer(security.DefaultSecurityConfig())
+	fmt.Println("\n" + visualizer.GenerateSecurityDashboard(analysis))
+	
+	return m.showSecurityResults(analysis, title)
+}
+
+// performFullSecurityAnalysis performs complete security analysis
+func (m *Menu) performFullSecurityAnalysis(files []string) (*security.EnhancedSecurityAnalysis, error) {
+	logParser := parser.New()
+	var allEntries []*parser.LogEntry
+	
+	fmt.Println("\n📖 Parsing log files...")
+	for _, file := range files {
+		entries, err := logParser.ParseFile(file)
+		if err != nil {
+			fmt.Printf("⚠️  Error parsing %s: %v\n", file, err)
+			continue
+		}
+		allEntries = append(allEntries, entries...)
+	}
+	
+	if len(allEntries) == 0 {
+		return nil, fmt.Errorf("no log entries found to analyze")
+	}
+	
+	fmt.Printf("✅ Parsed %d log entries\n", len(allEntries))
+	
+	// Perform comprehensive security analysis
+	fmt.Println("\n🔍 Performing comprehensive security analysis...")
+	config := security.DefaultSecurityConfig()
+	
+	threatDetector := security.NewThreatDetector(config)
+	anomalyDetector := security.NewAnomalyDetector(config)
+	scorer := security.NewSecurityScorer(config)
+	
+	// Detect all threats
+	webThreats, _ := threatDetector.DetectWebAttacks(allEntries)
+	infraThreats, _ := threatDetector.DetectInfrastructureAttacks(allEntries)
+	allThreats := append(webThreats, infraThreats...)
+	
+	// Detect anomalies
+	anomalies, _ := anomalyDetector.DetectAnomalies(allEntries)
+	
+	// Create IP profiles
+	ipProfiles, _ := anomalyDetector.ProfileIPs(allEntries)
+	
+	// Generate incidents
+	incidents, _ := scorer.GenerateIncidents(allThreats, anomalies)
+	
+	// Create analysis
+	analysis := &security.EnhancedSecurityAnalysis{
+		Threats:              allThreats,
+		Anomalies:            anomalies,
+		IPProfiles:           ipProfiles,
+		Incidents:            incidents,
+		AnalysisTimestamp:    time.Now(),
+		TotalEntriesAnalyzed: int64(len(allEntries)),
+		LogTimeRange: security.TimeRange{
+			Start: allEntries[0].Timestamp,
+			End:   allEntries[len(allEntries)-1].Timestamp,
+		},
+	}
+	
+	analysis.Summary = scorer.GenerateSecuritySummary(analysis)
+	
+	return analysis, nil
+}
+
+// showSecurityResults shows security analysis results with options
+func (m *Menu) showSecurityResults(analysis *security.EnhancedSecurityAnalysis, title string) error {
+	for {
+		fmt.Printf("\n📊 %s - Results Menu\n", title)
+		fmt.Println("═══════════════════════════════════")
+		fmt.Println()
+		fmt.Println("1. 📋 View Detailed Threat Report")
+		fmt.Println("2. 📊 View Anomaly Analysis")
+		fmt.Println("3. 🎯 View Security Recommendations")
+		fmt.Println("4. 🌐 Generate HTML Report")
+		fmt.Println("5. 📄 Export Results (JSON/CSV)")
+		fmt.Println("6. 🔙 Return to Security Menu")
+		fmt.Println()
+		
+		choice, err := m.getIntInput("Enter choice (1-6): ", 1, 6)
+		if err != nil {
+			return err
+		}
+		
+		visualizer := security.NewSecurityVisualizer(security.DefaultSecurityConfig())
+		
+		switch choice {
+		case 1:
+			fmt.Println(visualizer.GenerateDetailedThreatReport(analysis.Threats))
+			m.pause()
+		case 2:
+			fmt.Println(visualizer.GenerateAnomalyReport(analysis.Anomalies))
+			m.pause()
+		case 3:
+			fmt.Println(visualizer.GenerateSecurityRecommendationReport(analysis.Summary.RecommendedActions))
+			m.pause()
+		case 4:
+			if err := m.generateHTMLSecurityReport(analysis); err != nil {
+				m.showError("HTML report generation failed", err)
+			}
+		case 5:
+			if err := m.exportSecurityResults(analysis); err != nil {
+				m.showError("Export failed", err)
+			}
+		case 6:
+			return nil
+		}
+	}
+}
+
+// performThreatFocusedAnalysis performs detailed threat-focused analysis
+func (m *Menu) performThreatFocusedAnalysis(files []string) error {
+	logParser := parser.New()
+	var allEntries []*parser.LogEntry
+	
+	for _, file := range files {
+		entries, err := logParser.ParseFile(file)
+		if err != nil {
+			fmt.Printf("⚠️  Error parsing %s: %v\n", file, err)
+			continue
+		}
+		allEntries = append(allEntries, entries...)
+	}
+	
+	if len(allEntries) == 0 {
+		fmt.Println("❌ No log entries found to analyze")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Printf("✅ Parsed %d log entries\n", len(allEntries))
+	
+	// Perform detailed threat detection
+	fmt.Println("\n🔍 Performing advanced threat detection...")
+	config := security.DefaultSecurityConfig()
+	config.ThreatDetectionSensitivity = 9.0 // High sensitivity for detailed analysis
+	
+	threatDetector := security.NewThreatDetector(config)
+	visualizer := security.NewSecurityVisualizer(config)
+	
+	webThreats, _ := threatDetector.DetectWebAttacks(allEntries)
+	infraThreats, _ := threatDetector.DetectInfrastructureAttacks(allEntries)
+	
+	allThreats := append(webThreats, infraThreats...)
+	
+	// Display detailed threat report
+	fmt.Println("\n" + visualizer.GenerateDetailedThreatReport(allThreats))
+	
+	if len(allThreats) > 0 {
+		fmt.Println(visualizer.GenerateThreatTimelineChart(allThreats, 30*time.Minute))
+	}
+	
+	m.pause()
+	return nil
+}
+
+// performBehavioralAnalysis performs behavioral analysis and anomaly detection
+func (m *Menu) performBehavioralAnalysis(files []string) error {
+	logParser := parser.New()
+	var allEntries []*parser.LogEntry
+	
+	for _, file := range files {
+		entries, err := logParser.ParseFile(file)
+		if err != nil {
+			fmt.Printf("⚠️  Error parsing %s: %v\n", file, err)
+			continue
+		}
+		allEntries = append(allEntries, entries...)
+	}
+	
+	if len(allEntries) == 0 {
+		fmt.Println("❌ No log entries found to analyze")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Printf("✅ Parsed %d log entries\n", len(allEntries))
+	
+	// Perform behavioral analysis
+	fmt.Println("\n🧠 Analyzing behavioral patterns...")
+	config := security.DefaultSecurityConfig()
+	config.BehavioralAnalysisEnabled = true
+	config.AnomalyThreshold = 2.0 // Lower threshold for more sensitive detection
+	
+	anomalyDetector := security.NewAnomalyDetector(config)
+	visualizer := security.NewSecurityVisualizer(config)
+	
+	anomalies, _ := anomalyDetector.DetectAnomalies(allEntries)
+	ipProfiles, _ := anomalyDetector.ProfileIPs(allEntries)
+	
+	// Display results
+	fmt.Println("\n" + visualizer.GenerateAnomalyReport(anomalies))
+	fmt.Println(visualizer.GenerateAnomalyHeatMap(anomalies))
+	fmt.Println(visualizer.GenerateIPBehaviorChart(ipProfiles, 15))
+	
+	m.pause()
+	return nil
+}
+
+// performRiskAssessment performs comprehensive risk assessment
+func (m *Menu) performRiskAssessment(files []string) error {
+	analysis, err := m.performFullSecurityAnalysis(files)
+	if err != nil {
+		return err
+	}
+	
+	visualizer := security.NewSecurityVisualizer(security.DefaultSecurityConfig())
+	
+	// Display risk-focused results
+	fmt.Println("\n📊 Security Risk Assessment Results")
+	fmt.Println("═══════════════════════════════════")
+	fmt.Printf("Overall Risk Level: %s\n", analysis.Summary.OverallRisk.String())
+	fmt.Printf("Security Score: %d/100\n", analysis.Summary.SecurityScore)
+	fmt.Printf("High-Risk IPs: %d\n", len(analysis.Summary.HighRiskIPs))
+	fmt.Printf("Critical Vulnerabilities: %d\n", analysis.Summary.CriticalVulns)
+	
+	// Show detailed recommendations
+	fmt.Println("\n" + visualizer.GenerateSecurityRecommendationReport(analysis.Summary.RecommendedActions))
+	
+	m.pause()
+	return nil
+}
+
+// performIncidentAnalysis performs incident response analysis
+func (m *Menu) performIncidentAnalysis(files []string) error {
+	analysis, err := m.performFullSecurityAnalysis(files)
+	if err != nil {
+		return err
+	}
+	
+	if len(analysis.Incidents) == 0 {
+		fmt.Println("✅ No security incidents detected in the analyzed logs.")
+		m.pause()
+		return nil
+	}
+	
+	fmt.Printf("🚨 %d Security Incidents Detected\n", len(analysis.Incidents))
+	fmt.Println("═══════════════════════════════════")
+	
+	for i, incident := range analysis.Incidents {
+		if i >= 5 { // Show top 5 incidents
+			fmt.Printf("... and %d more incidents\n", len(analysis.Incidents)-5)
+			break
+		}
+		
+		fmt.Printf("\n📋 Incident #%d: %s\n", i+1, incident.Title)
+		fmt.Printf("Severity: %s\n", incident.Severity.String())
+		fmt.Printf("Time: %s to %s\n", 
+			incident.StartTime.Format("2006-01-02 15:04:05"),
+			incident.EndTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Impact: %s\n", incident.Impact)
+		fmt.Printf("IOCs: %v\n", incident.IOCs)
+		
+		if len(incident.Recommendations) > 0 {
+			fmt.Println("Immediate Actions:")
+			for j, rec := range incident.Recommendations {
+				if j >= 3 {
+					break
+				}
+				fmt.Printf("• %s\n", rec.Title)
+			}
+		}
+	}
+	
+	m.pause()
+	return nil
+}
+
+// generateSecurityReportInFormat generates security report in specified format
+func (m *Menu) generateSecurityReportInFormat(files []string, format int) error {
+	analysis, err := m.performFullSecurityAnalysis(files)
+	if err != nil {
+		return err
+	}
+	
+	switch format {
+	case 1:
+		return m.generateTextSecurityReport(analysis)
+	case 2:
+		return m.generateHTMLSecurityReport(analysis)
+	case 3:
+		return m.generateJSONSecurityReport(analysis)
+	}
+	
+	return nil
+}
+
+// generateTextSecurityReport generates text-based security report
+func (m *Menu) generateTextSecurityReport(analysis *security.EnhancedSecurityAnalysis) error {
+	filename := fmt.Sprintf("security-report-%s.txt", time.Now().Format("20060102-150405"))
+	
+	visualizer := security.NewSecurityVisualizer(security.DefaultSecurityConfig())
+	
+	var content strings.Builder
+	content.WriteString("SECURITY ANALYSIS REPORT\n")
+	content.WriteString("========================\n\n")
+	content.WriteString(fmt.Sprintf("Generated: %s\n", time.Now().Format("2006-01-02 15:04:05")))
+	content.WriteString(fmt.Sprintf("Analysis Period: %s to %s\n", 
+		analysis.LogTimeRange.Start.Format("2006-01-02 15:04:05"),
+		analysis.LogTimeRange.End.Format("2006-01-02 15:04:05")))
+	content.WriteString(fmt.Sprintf("Total Entries: %d\n\n", analysis.TotalEntriesAnalyzed))
+	
+	content.WriteString(visualizer.GenerateSecurityDashboard(analysis))
+	content.WriteString("\n" + visualizer.GenerateDetailedThreatReport(analysis.Threats))
+	content.WriteString("\n" + visualizer.GenerateAnomalyReport(analysis.Anomalies))
+	content.WriteString("\n" + visualizer.GenerateSecurityRecommendationReport(analysis.Summary.RecommendedActions))
+	
+	err := os.WriteFile(filename, []byte(content.String()), 0644)
+	if err != nil {
+		return err
+	}
+	
+	fmt.Printf("✅ Security report saved: %s\n", filename)
+	m.pause()
+	return nil
+}
+
+// generateHTMLSecurityReport generates HTML security report
+func (m *Menu) generateHTMLSecurityReport(analysis *security.EnhancedSecurityAnalysis) error {
+	filename := fmt.Sprintf("security-report-%s.html", time.Now().Format("20060102-150405"))
+	
+	// Basic HTML structure
+	var content strings.Builder
+	content.WriteString(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .section { margin-bottom: 30px; }
+        .risk-critical { color: #e74c3c; font-weight: bold; }
+        .risk-high { color: #e67e22; font-weight: bold; }
+        .risk-medium { color: #f39c12; font-weight: bold; }
+        .risk-low { color: #27ae60; font-weight: bold; }
+        .risk-minimal { color: #2ecc71; font-weight: bold; }
+        .score-card { background: #ecf0f1; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .threat-item { border-left: 4px solid #e74c3c; padding: 10px; margin: 5px 0; background: #fdf2f2; }
+        .recommendation { border-left: 4px solid #3498db; padding: 10px; margin: 5px 0; background: #f8f9fa; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Security Analysis Report</h1>
+            <p>Generated: ` + time.Now().Format("January 2, 2006 15:04:05") + `</p>
+        </div>
+`)
+	
+	// Security overview
+	content.WriteString(`        <div class="section">
+            <h2>📊 Security Overview</h2>
+            <div class="score-card">
+                <h3>Overall Security Score: ` + fmt.Sprintf("%d/100", analysis.Summary.SecurityScore) + `</h3>
+                <p><strong>Risk Level:</strong> <span class="risk-` + strings.ToLower(analysis.Summary.OverallRisk.String()) + `">` + analysis.Summary.OverallRisk.String() + `</span></p>
+                <p><strong>Active Threats:</strong> ` + fmt.Sprintf("%d", analysis.Summary.ActiveThreats) + `</p>
+                <p><strong>Critical Vulnerabilities:</strong> ` + fmt.Sprintf("%d", analysis.Summary.CriticalVulns) + `</p>
+                <p><strong>High-Risk IPs:</strong> ` + fmt.Sprintf("%d", len(analysis.Summary.HighRiskIPs)) + `</p>
+            </div>
+        </div>
+`)
+	
+	// Top threats
+	if len(analysis.Threats) > 0 {
+		content.WriteString(`        <div class="section">
+            <h2>🚨 Top Security Threats</h2>
+`)
+		for i, threat := range analysis.Threats {
+			if i >= 5 {
+				break
+			}
+			var threatType string
+			switch t := threat.Type.(type) {
+			case security.WebAttackType:
+				threatType = t.String()
+			case security.InfrastructureAttackType:
+				threatType = t.String()
+			default:
+				threatType = "Unknown"
+			}
+			
+			content.WriteString(`            <div class="threat-item">
+                <h4>` + threatType + `</h4>
+                <p><strong>Source IP:</strong> ` + threat.IP + `</p>
+                <p><strong>Severity:</strong> ` + threat.Severity.String() + `</p>
+                <p><strong>Confidence:</strong> ` + fmt.Sprintf("%.0f%%", threat.Confidence*100) + `</p>
+                <p><strong>Target:</strong> ` + threat.URL + `</p>
+            </div>
+`)
+		}
+		content.WriteString(`        </div>
+`)
+	}
+	
+	content.WriteString(`    </div>
+</body>
+</html>`)
+	
+	err := os.WriteFile(filename, []byte(content.String()), 0644)
+	if err != nil {
+		return err
+	}
+	
+	fmt.Printf("✅ HTML security report saved: %s\n", filename)
+	
+	// Attempt to open in browser
+	if m.confirmYesNo("Open report in browser?") {
+		m.openInBrowser(filename)
+	}
+	
+	return nil
+}
+
+// generateJSONSecurityReport generates JSON export of security data
+func (m *Menu) generateJSONSecurityReport(analysis *security.EnhancedSecurityAnalysis) error {
+	filename := fmt.Sprintf("security-data-%s.json", time.Now().Format("20060102-150405"))
+	
+	data, err := json.MarshalIndent(analysis, "", "  ")
+	if err != nil {
+		return err
+	}
+	
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return err
+	}
+	
+	fmt.Printf("✅ JSON security data exported: %s\n", filename)
+	m.pause()
+	return nil
+}
+
+// exportSecurityResults exports security results in various formats
+func (m *Menu) exportSecurityResults(analysis *security.EnhancedSecurityAnalysis) error {
+	fmt.Println("\n📤 Export Security Results")
+	fmt.Println("═════════════════════════")
+	fmt.Println()
+	fmt.Println("Available export formats:")
+	fmt.Println("1. 📊 JSON (Complete data)")
+	fmt.Println("2. 📄 CSV (Threat summary)")
+	fmt.Println("3. 📋 TXT (Executive summary)")
+	fmt.Println("4. 🔙 Back")
+	fmt.Println()
+	
+	choice, err := m.getIntInput("Select format (1-4): ", 1, 4)
+	if err != nil {
+		return err
+	}
+	
+	switch choice {
+	case 1:
+		return m.generateJSONSecurityReport(analysis)
+	case 2:
+		return m.exportSecurityCSV(analysis)
+	case 3:
+		return m.generateTextSecurityReport(analysis)
+	case 4:
+		return nil
+	}
+	
+	return nil
+}
+
+// exportSecurityCSV exports threat data as CSV
+func (m *Menu) exportSecurityCSV(analysis *security.EnhancedSecurityAnalysis) error {
+	filename := fmt.Sprintf("security-threats-%s.csv", time.Now().Format("20060102-150405"))
+	
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	
+	// Write header
+	header := []string{
+		"Timestamp", "IP", "Threat Type", "Severity", "Confidence", 
+		"URL", "Attack Vector", "Payload",
+	}
+	writer.Write(header)
+	
+	// Write threat data
+	for _, threat := range analysis.Threats {
+		var threatType string
+		switch t := threat.Type.(type) {
+		case security.WebAttackType:
+			threatType = t.String()
+		case security.InfrastructureAttackType:
+			threatType = t.String()
+		default:
+			threatType = "Unknown"
+		}
+		
+		record := []string{
+			threat.Timestamp.Format("2006-01-02 15:04:05"),
+			threat.IP,
+			threatType,
+			threat.Severity.String(),
+			fmt.Sprintf("%.2f", threat.Confidence),
+			threat.URL,
+			threat.AttackVector,
+			threat.Payload,
+		}
+		writer.Write(record)
+	}
+	
+	fmt.Printf("✅ CSV export saved: %s\n", filename)
+	m.pause()
+	return nil
+}

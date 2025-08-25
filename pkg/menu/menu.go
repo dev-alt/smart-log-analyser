@@ -46,16 +46,20 @@ func (m *Menu) Run() error {
 				m.showError("Performance analysis error", err)
 			}
 		case 4:
+			if err := m.handleEnhancedSecurityAnalysis(); err != nil {
+				m.showError("Enhanced security analysis error", err)
+			}
+		case 5:
 			if err := m.handleHTMLReport(); err != nil {
 				m.showError("HTML report error", err)
 			}
-		case 5:
+		case 6:
 			if err := m.handleConfiguration(); err != nil {
 				m.showError("Configuration error", err)
 			}
-		case 6:
-			m.showHelp()
 		case 7:
+			m.showHelp()
+		case 8:
 			m.showGoodbye()
 			return nil
 		default:
@@ -85,13 +89,14 @@ func (m *Menu) showMainMenu() (int, error) {
 	fmt.Println("1. 📂 Analyse Local Log Files")
 	fmt.Println("2. 🌐 Download & Analyse Remote Logs")
 	fmt.Println("3. ⚡ Performance Analysis & Profiling")
-	fmt.Println("4. 📈 Generate HTML Report")
-	fmt.Println("5. 🔧 Configuration & Setup")
-	fmt.Println("6. 📚 Help & Documentation")
-	fmt.Println("7. 🚪 Exit")
+	fmt.Println("4. 🔐 Enhanced Security Analysis")
+	fmt.Println("5. 📈 Generate HTML Report")
+	fmt.Println("6. 🔧 Configuration & Setup")
+	fmt.Println("7. 📚 Help & Documentation")
+	fmt.Println("8. 🚪 Exit")
 	fmt.Println()
 	
-	return m.getIntInput("Enter your choice (1-7): ", 1, 7)
+	return m.getIntInput("Enter your choice (1-8): ", 1, 8)
 }
 
 // handleLocalAnalysis handles local log file analysis
