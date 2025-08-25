@@ -267,7 +267,7 @@ func (g *Generator) transformResults(results *analyser.Results, title string) *R
 		errorURLs = append(errorURLs, ErrorRow{
 			URL:         truncateURL(errorURL.URL, 60),
 			ErrorCount:  errorURL.Count,
-			StatusCodes: "4xx/5xx", // Simplified for now
+			StatusCodes: errorURL.FormatStatusCodes(),
 			ErrorRate:   fmt.Sprintf("%.1f", float64(errorURL.Count*100)/float64(results.TotalRequests)),
 		})
 	}

@@ -73,10 +73,10 @@ docs/
   - ✅ ASCII charts and terminal visualizations (Session 19)
   - ✅ Historical trend analysis and degradation detection (Sessions 20-21)
   - ✅ **Complete menu integration** - All features accessible via intuitive interface
-  - ⏳ Advanced query language (planned)
+  - ✅ **Advanced query language** - SQL-like query language with comprehensive filtering, aggregation, and functions
   - ⏳ Database integration (planned)
 
-## Recent Achievements (Sessions 20-21)
+## Recent Achievements (Sessions 20-22)
 
 ### Session 20: HTML Chart Rendering Fixes
 - Fixed Chart.js loading issues and chart sizing problems
@@ -89,7 +89,18 @@ docs/
 - Professional guided interface requiring no CLI knowledge
 - Smart data validation with helpful user feedback
 
-**Current Status**: Smart Log Analyser now offers a complete advanced analytics platform with intuitive access to all features through both CLI and interactive menu interfaces.
+### Session 22: Advanced Query Language Implementation
+- Complete SQL-like query language (SLAQ) with comprehensive syntax support
+- Full lexer, parser, and execution engine implementation
+- Support for SELECT, WHERE, GROUP BY, ORDER BY, HAVING, and LIMIT clauses
+- Rich operator set including comparison, string matching, and logical operations
+- Comprehensive function library: aggregate, time, string, and network functions
+- Multiple output formats: table, CSV, and JSON with proper formatting
+- CLI integration with --query and --query-format flags
+- Comprehensive documentation and examples
+- Production-ready architecture with robust error handling
+
+**Current Status**: Smart Log Analyser now offers a complete advanced analytics platform with both intuitive guided interfaces and powerful query capabilities for expert users, combining ease of use with professional-grade analytical power.
 
 ## Development Standards
 

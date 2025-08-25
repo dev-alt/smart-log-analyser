@@ -1,7 +1,9 @@
 package analyser
 
 import (
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,8 +16,9 @@ type IPStat struct {
 }
 
 type URLStat struct {
-	URL   string
-	Count int
+	URL         string
+	Count       int
+	StatusCodes map[int]int // Maps status code to count (for error URLs)
 }
 
 type TimeRange struct {
@@ -162,7 +165,7 @@ func New() *Analyser {
 }
 
 func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Results {
-	filtered := a.filterByTime(logs, since, until)
+	filtered := a.FilterByTime(logs, since, until)
 	
 	if len(filtered) == 0 {
 		return &Results{
@@ -233,7 +236,7 @@ func (a *Analyser) Analyse(logs []*parser.LogEntry, since, until *time.Time) *Re
 	return results
 }
 
-func (a *Analyser) filterByTime(logs []*parser.LogEntry, since, until *time.Time) []*parser.LogEntry {
+func (a *Analyser) FilterByTime(logs []*parser.LogEntry, since, until *time.Time) []*parser.LogEntry {
 	var filtered []*parser.LogEntry
 
 	for _, log := range logs {
@@ -308,7 +311,11 @@ func (a *Analyser) analyseTopURLs(logs []*parser.LogEntry) []URLStat {
 
 	var urlStats []URLStat
 	for url, count := range urlCounts {
-		urlStats = append(urlStats, URLStat{URL: url, Count: count})
+		urlStats = append(urlStats, URLStat{
+			URL:         url, 
+			Count:       count,
+			StatusCodes: nil, // Not applicable for top URLs (not error-specific)
+		})
 	}
 
 	sort.Slice(urlStats, func(i, j int) bool {
@@ -316,6 +323,27 @@ func (a *Analyser) analyseTopURLs(logs []*parser.LogEntry) []URLStat {
 	})
 
 	return urlStats
+}
+
+// FormatStatusCodes formats status codes from a URLStat for display
+func (u *URLStat) FormatStatusCodes() string {
+	if u.StatusCodes == nil || len(u.StatusCodes) == 0 {
+		return "N/A"
+	}
+	
+	var codes []string
+	for status := range u.StatusCodes {
+		codes = append(codes, fmt.Sprintf("%d", status))
+	}
+	
+	// Sort status codes numerically
+	sort.Slice(codes, func(i, j int) bool {
+		a, _ := strconv.Atoi(codes[i])
+		b, _ := strconv.Atoi(codes[j])
+		return a < b
+	})
+	
+	return strings.Join(codes, "/")
 }
 
 func (a *Analyser) analyseHTTPMethods(logs []*parser.LogEntry) []MethodStat {
@@ -545,17 +573,31 @@ func (a *Analyser) analyseDetailedStatusCodes(logs []*parser.LogEntry) []Detaile
 }
 
 func (a *Analyser) analyseErrorURLs(logs []*parser.LogEntry) []URLStat {
-	errorCounts := make(map[string]int)
+	// Map from URL to status code counts
+	errorData := make(map[string]map[int]int)
 	
 	for _, log := range logs {
 		if log.Status >= 400 { // 4xx and 5xx errors
-			errorCounts[log.URL]++
+			if errorData[log.URL] == nil {
+				errorData[log.URL] = make(map[int]int)
+			}
+			errorData[log.URL][log.Status]++
 		}
 	}
 	
 	var errorStats []URLStat
-	for url, count := range errorCounts {
-		errorStats = append(errorStats, URLStat{URL: url, Count: count})
+	for url, statusCodes := range errorData {
+		// Calculate total count for this URL
+		totalCount := 0
+		for _, count := range statusCodes {
+			totalCount += count
+		}
+		
+		errorStats = append(errorStats, URLStat{
+			URL:         url,
+			Count:       totalCount,
+			StatusCodes: statusCodes,
+		})
 	}
 	
 	sort.Slice(errorStats, func(i, j int) bool {
@@ -592,8 +634,9 @@ func (a *Analyser) analyseLargeRequests(logs []*parser.LogEntry) []URLStat {
 	for _, req := range requests {
 		if !seen[req.url] && len(largeStats) < 10 {
 			largeStats = append(largeStats, URLStat{
-				URL:   req.url,
-				Count: int(req.size), // Store size in count field for display
+				URL:         req.url,
+				Count:       int(req.size), // Store size in count field for display
+				StatusCodes: nil,           // Not applicable for large requests
 			})
 			seen[req.url] = true
 		}

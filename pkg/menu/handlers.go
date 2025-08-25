@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -326,16 +327,95 @@ func (m *Menu) exportHTML(results *analyser.Results, timestamp string) error {
 // exportJSON exports JSON data
 func (m *Menu) exportJSON(results *analyser.Results, timestamp string) error {
 	filename := fmt.Sprintf("output/analysis_%s.json", timestamp)
-	// Implementation would use existing JSON export functionality
-	fmt.Printf("✅ JSON data saved to: %s\n", filename)
+	
+	// Ensure output directory exists
+	if err := os.MkdirAll("output", 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+	
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create JSON file: %w", err)
+	}
+	defer file.Close()
+	
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(results); err != nil {
+		return fmt.Errorf("failed to encode JSON: %w", err)
+	}
+	
+	fmt.Printf("✅ JSON data exported to: %s\n", filename)
 	return nil
 }
 
 // exportCSV exports CSV data
 func (m *Menu) exportCSV(results *analyser.Results, timestamp string) error {
 	filename := fmt.Sprintf("output/summary_%s.csv", timestamp)
-	// Implementation would use existing CSV export functionality
-	fmt.Printf("✅ CSV data saved to: %s\n", filename)
+	
+	// Ensure output directory exists
+	if err := os.MkdirAll("output", 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+	
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create CSV file: %w", err)
+	}
+	defer file.Close()
+	
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	
+	// Write overview section
+	writer.Write([]string{"Section", "Metric", "Value", "Percentage"})
+	writer.Write([]string{"Overview", "Total Requests", strconv.Itoa(results.TotalRequests), "100.0"})
+	writer.Write([]string{"Overview", "Unique IPs", strconv.Itoa(results.UniqueIPs), ""})
+	writer.Write([]string{"Overview", "Unique URLs", strconv.Itoa(results.UniqueURLs), ""})
+	writer.Write([]string{"Overview", "Total Bytes", strconv.FormatInt(results.TotalBytes, 10), ""})
+	writer.Write([]string{"Overview", "Average Size", strconv.FormatInt(results.AverageSize, 10), ""})
+	writer.Write([]string{"Overview", "Human Requests", strconv.Itoa(results.HumanRequests), fmt.Sprintf("%.1f", float64(results.HumanRequests)/float64(results.TotalRequests)*100)})
+	writer.Write([]string{"Overview", "Bot Requests", strconv.Itoa(results.BotRequests), fmt.Sprintf("%.1f", float64(results.BotRequests)/float64(results.TotalRequests)*100)})
+	
+	// Write status codes
+	for status, count := range results.StatusCodes {
+		percentage := float64(count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Status Codes", status, strconv.Itoa(count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write detailed status codes
+	for _, status := range results.DetailedStatusCodes {
+		percentage := float64(status.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Detailed Status", strconv.Itoa(status.Code), strconv.Itoa(status.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write top IPs
+	for i, ip := range results.TopIPs {
+		if i >= 20 { break } // Limit to top 20 for CSV
+		percentage := float64(ip.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Top IPs", ip.IP, strconv.Itoa(ip.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write top URLs
+	for i, url := range results.TopURLs {
+		if i >= 20 { break } // Limit to top 20 for CSV
+		percentage := float64(url.Count) / float64(results.TotalRequests) * 100
+		writer.Write([]string{"Top URLs", url.URL, strconv.Itoa(url.Count), fmt.Sprintf("%.1f", percentage)})
+	}
+	
+	// Write error URLs with detailed status codes
+	for i, url := range results.ErrorURLs {
+		if i >= 20 { break } // Limit to top 20 for CSV
+		writer.Write([]string{"Error URLs", url.URL, strconv.Itoa(url.Count), ""})
+	}
+	
+	// Write large requests
+	for i, url := range results.LargeRequests {
+		if i >= 20 { break } // Limit to top 20 for CSV
+		writer.Write([]string{"Large Requests", url.URL, strconv.Itoa(url.Count), ""}) // Count field contains size
+	}
+	
+	fmt.Printf("✅ CSV data exported to: %s\n", filename)
 	return nil
 }
 

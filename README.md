@@ -40,7 +40,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Interactive menu system** (User-friendly guided interface with dual-mode operation)
 - [x] **ASCII charts and terminal visualizations** (Professional terminal-based charts with color support)
 - [x] **Historical trend analysis** (Compare periods, track degradation, automated alerting)
-- [ ] Advanced query language for complex filtering
+- [x] **Advanced query language for complex filtering** (SQL-like query language with filtering, aggregation, and functions)
 - [ ] Database integration (SQLite, PostgreSQL export)
 - [ ] Plugin architecture for custom analyzers
 
@@ -627,6 +627,118 @@ Accepts one or more log files for analysis. When multiple files are provided, th
 - `--config`: Path to SSH configuration file (default: "servers.json")
 - `--server`: Specific server to download from (host name)
 - `--output`: Directory to save downloaded files (default: "./downloads")
+
+## Advanced Query Language (SLAQ)
+
+The Smart Log Analyser Query Language provides powerful SQL-like capabilities for filtering and analyzing log data with custom queries.
+
+### Basic Syntax
+```sql
+SELECT [fields] FROM logs WHERE [conditions] [GROUP BY field] [ORDER BY field] [LIMIT number]
+```
+
+### Query Examples
+
+**Basic Filtering:**
+```bash
+# Find all 404 errors
+./smart-log-analyser analyse access.log --query "SELECT * FROM logs WHERE status = 404"
+
+# Filter by IP address
+./smart-log-analyser analyse access.log --query "SELECT ip, url, status FROM logs WHERE ip = '192.168.1.100'"
+```
+
+**Aggregation Analysis:**
+```bash  
+# Top IP addresses by request count
+./smart-log-analyser analyse access.log --query "SELECT ip, COUNT() FROM logs GROUP BY ip ORDER BY COUNT() DESC LIMIT 10"
+
+# Error analysis by URL
+./smart-log-analyser analyse access.log --query "SELECT url, status, COUNT() FROM logs WHERE status >= 400 GROUP BY url, status"
+```
+
+**Time-based Analysis:**
+```bash
+# Hourly traffic distribution
+./smart-log-analyser analyse access.log --query "SELECT HOUR(timestamp), COUNT() FROM logs GROUP BY HOUR(timestamp) ORDER BY HOUR(timestamp)"
+
+# Requests by day of week
+./smart-log-analyser analyse access.log --query "SELECT WEEKDAY(timestamp), COUNT() FROM logs GROUP BY WEEKDAY(timestamp)"
+```
+
+**Complex Filtering:**
+```bash
+# Large API requests with errors
+./smart-log-analyser analyse access.log --query "SELECT url, method, size, status FROM logs WHERE status >= 400 AND size > 10000 AND url LIKE '/api*'"
+
+# Bot traffic analysis
+./smart-log-analyser analyse access.log --query "SELECT user_agent, COUNT() FROM logs WHERE user_agent CONTAINS 'bot' GROUP BY user_agent"
+```
+
+### Available Fields
+- `ip` - Client IP address
+- `timestamp` - Request timestamp  
+- `method` - HTTP method (GET, POST, etc.)
+- `url` - Request URL/path
+- `protocol` - HTTP protocol version
+- `status` - HTTP status code
+- `size` - Response size in bytes
+- `referer` - HTTP referer header
+- `user_agent` - User agent string
+
+### Available Functions
+
+**Aggregate Functions:**
+- `COUNT()` - Count records
+- `SUM(field)` - Sum numeric values
+- `AVG(field)` - Average of numeric values
+- `MIN(field)` - Minimum value
+- `MAX(field)` - Maximum value
+
+**Time Functions:**
+- `HOUR(timestamp)` - Extract hour (0-23)
+- `DAY(timestamp)` - Extract day of month
+- `WEEKDAY(timestamp)` - Extract weekday (0=Sunday)
+- `DATE(timestamp)` - Extract date part
+
+**String Functions:**
+- `UPPER(field)` - Convert to uppercase
+- `LOWER(field)` - Convert to lowercase
+- `LENGTH(field)` - String length
+
+### Available Operators
+
+**Comparison:**
+- `=`, `!=`, `<>` - Equality/inequality
+- `<`, `<=`, `>`, `>=` - Numeric comparisons
+
+**String Matching:**
+- `LIKE` - Pattern matching (`*` = multiple chars, `?` = single char)
+- `CONTAINS` - String contains substring
+- `STARTS_WITH` - String starts with prefix
+- `ENDS_WITH` - String ends with suffix
+
+**Logical:**
+- `AND`, `OR`, `NOT` - Logical operations
+- `IN` - Value in list: `status IN (200, 201, 202)`
+- `BETWEEN` - Value in range: `size BETWEEN 1000 AND 5000`
+
+### Output Formats
+
+**Table Format (default):**
+```bash
+./smart-log-analyser analyse access.log --query "SELECT ip, COUNT() FROM logs GROUP BY ip LIMIT 3"
+```
+
+**CSV Format:**
+```bash
+./smart-log-analyser analyse access.log --query "SELECT ip, COUNT() FROM logs GROUP BY ip" --query-format csv
+```
+
+**JSON Format:**
+```bash
+./smart-log-analyser analyse access.log --query "SELECT ip, COUNT() FROM logs GROUP BY ip" --query-format json
+```
 - `--test`: Test SSH connection without downloading
 - `--init`: Create a sample configuration file (will not overwrite existing files)
 - `--list`: List available log files without downloading

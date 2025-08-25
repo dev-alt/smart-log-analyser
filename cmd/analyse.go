@@ -15,6 +15,7 @@ import (
 	"smart-log-analyser/pkg/charts"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
+	"smart-log-analyser/pkg/query"
 	"smart-log-analyser/pkg/trends"
 )
 
@@ -33,13 +34,34 @@ var (
 	noColors      bool
 	trendAnalysis bool
 	comparePeriod string
+	queryString   string
+	queryFormat   string
 )
 
 var analyseCmd = &cobra.Command{
 	Use:   "analyse [log-files...]",
 	Short: "Analyse Nginx access logs",
 	Long:  `Parse and analyse Nginx access logs to provide statistical insights.
-Accepts multiple log files to analyse together.`,
+Accepts multiple log files to analyse together.
+
+Advanced Query Language (SLAQ):
+You can use SQL-like queries to filter and analyze your logs. Examples:
+
+  # Basic filtering
+  --query "SELECT * FROM logs WHERE status = 404"
+  
+  # Aggregation analysis  
+  --query "SELECT ip, COUNT() FROM logs GROUP BY ip ORDER BY COUNT() DESC LIMIT 10"
+  
+  # Time-based analysis
+  --query "SELECT HOUR(timestamp), COUNT() FROM logs GROUP BY HOUR(timestamp)"
+  
+  # Complex filtering
+  --query "SELECT url, method FROM logs WHERE status >= 400 AND url LIKE '/api*'"
+
+Available fields: ip, timestamp, method, url, protocol, status, size, referer, user_agent
+Available functions: COUNT(), SUM(), AVG(), MIN(), MAX(), HOUR(), DAY(), UPPER(), LOWER()
+Available operators: =, !=, <, >, <=, >=, LIKE, CONTAINS, STARTS_WITH, ENDS_WITH, IN, BETWEEN`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		p := parser.New()
@@ -80,6 +102,34 @@ Accepts multiple log files to analyse together.`,
 				log.Fatalf("Invalid until time format: %v", err)
 			}
 			untilTime = &t
+		}
+
+		// Execute query if provided
+		if queryString != "" {
+			fmt.Printf("🔍 Executing query: %s\n", queryString)
+			
+			// Filter logs by time if specified
+			var filteredLogs []*parser.LogEntry
+			if sinceTime != nil || untilTime != nil {
+				a := analyser.New()
+				filteredLogs = a.FilterByTime(allLogs, sinceTime, untilTime)
+			} else {
+				filteredLogs = allLogs
+			}
+			
+			// Execute the query
+			engine := query.NewQueryEngine(filteredLogs)
+			result, err := engine.Query(queryString, queryFormat)
+			if err != nil {
+				fmt.Printf("❌ Query error: %v\n", err)
+				helper := query.NewQueryHelper()
+				fmt.Printf("💡 %s\n", helper.SuggestCorrection(err))
+				return
+			}
+			
+			fmt.Printf("📊 Query Results:\n")
+			fmt.Printf("%s", result)
+			return
 		}
 
 		a := analyser.New()
@@ -152,6 +202,8 @@ func init() {
 	analyseCmd.Flags().BoolVar(&noColors, "no-colors", false, "Disable colors in ASCII charts")
 	analyseCmd.Flags().BoolVar(&trendAnalysis, "trend-analysis", false, "Perform historical trend analysis and degradation detection")
 	analyseCmd.Flags().StringVar(&comparePeriod, "compare-period", "", "Compare with specific period (e.g., 'previous-day', '2024-08-20')")
+	analyseCmd.Flags().StringVar(&queryString, "query", "", "Execute a custom SQL-like query on log data")
+	analyseCmd.Flags().StringVar(&queryFormat, "query-format", "table", "Output format for query results (table, csv, json)")
 }
 
 func printResults(results *analyser.Results) {
