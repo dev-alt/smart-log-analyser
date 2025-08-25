@@ -90,7 +90,7 @@ Smart Log Analyser now features an **interactive menu system** that launches whe
 - **📂 Analyse Local Log Files**: Browse and select log files with guided analysis
 - **🌐 Download & Analyse Remote Logs**: Manage remote server connections and downloads
 - **📈 Generate HTML Report**: Create interactive reports with custom settings
-- **🔧 Configuration & Setup**: Configure servers, preferences, and export settings
+- **🔧 Configuration & Setup**: Complete configuration management with presets, templates, and preferences
 - **📚 Help & Documentation**: Built-in help and guidance
 - **🚪 Exit**: Clean exit from the application
 
@@ -119,6 +119,53 @@ After log analysis completes, the interactive system offers comprehensive option
 - **Trend Analysis**: Automated degradation detection with risk scoring
 - **Combined Workflows**: Seamless integration of all analysis types
 - **Smart Validation**: Helpful feedback about data requirements and limitations
+
+## Interactive Configuration Management 🔧
+
+The interactive menu provides comprehensive configuration management through an intuitive interface:
+
+### Configuration Menu Features
+```
+🔧 Configuration & Setup
+═══════════════════════
+1. 🎯 Browse & Use Analysis Presets      - 12 built-in presets for common scenarios
+2. 📄 Manage Report Templates            - 5 professional report templates
+3. 🌐 Setup Remote Server Connections    - Enhanced server profile management
+4. ⚙️  Configure Analysis Preferences     - Default settings and preferences
+5. 📊 View Configuration Status          - Current system status and initialization
+6. 💾 Backup & Restore Configuration     - Configuration backup and restore
+7. 🔄 Reset to Defaults                  - Clean reset to factory defaults
+8. 🚪 Back to Main Menu                  - Return to main menu
+```
+
+### Analysis Presets Interactive Management
+- **Browse Available Presets**: View all 12 presets organized by category (Security, Performance, Traffic)
+- **Use Preset for Analysis**: Select a preset and run analysis with guided file selection
+- **Browse by Category**: Explore presets by specific analysis categories with descriptions
+- **Export/Import Presets**: Share preset configurations between systems
+
+### Real-time Configuration Status
+```
+📊 Configuration Status
+══════════════════════
+📁 Configuration Directory: config
+📄 Configuration File: config/app.yaml
+🔧 Initialized: true
+🎯 Presets: 12
+📄 Templates: 5
+🌐 Server Profiles: 0
+```
+
+### Interactive Preset Usage Workflow
+1. **Select Configuration & Setup** from main menu
+2. **Choose "Browse & Use Analysis Presets"** 
+3. **Browse available presets** by category or view all
+4. **Select "Use Preset for Analysis"**
+5. **Choose your preset** (e.g., `simple-top-ips`, `security-failed-logins`)
+6. **Select log files** using the guided file selection
+7. **View results** with automatic query execution and formatting
+
+The interactive configuration system makes powerful analysis presets accessible to users of all skill levels, eliminating the need to remember complex CLI syntax while providing professional-grade analytical capabilities.
 
 ## Quick Start
 

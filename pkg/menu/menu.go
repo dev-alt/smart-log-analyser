@@ -250,28 +250,37 @@ func (m *Menu) handleConfiguration() error {
 	fmt.Println("═══════════════════════")
 	fmt.Println()
 	fmt.Println("Available options:")
-	fmt.Println("1. Setup remote server connections")
-	fmt.Println("2. Configure analysis preferences")
-	fmt.Println("3. Set default export locations")
-	fmt.Println("4. View current configuration")
-	fmt.Println("5. Back to main menu")
+	fmt.Println("1. 🎯 Browse & Use Analysis Presets")
+	fmt.Println("2. 📄 Manage Report Templates") 
+	fmt.Println("3. 🌐 Setup Remote Server Connections")
+	fmt.Println("4. ⚙️  Configure Analysis Preferences")
+	fmt.Println("5. 📊 View Configuration Status")
+	fmt.Println("6. 💾 Backup & Restore Configuration")
+	fmt.Println("7. 🔄 Reset to Defaults")
+	fmt.Println("8. 🚪 Back to Main Menu")
 	fmt.Println()
 	
-	choice, err := m.getIntInput("Enter choice (1-5): ", 1, 5)
+	choice, err := m.getIntInput("Enter choice (1-8): ", 1, 8)
 	if err != nil {
 		return err
 	}
 	
 	switch choice {
 	case 1:
-		return m.setupRemoteServers()
+		return m.handleAnalysisPresets()
 	case 2:
-		return m.configureAnalysisPreferences()
+		return m.handleReportTemplates()
 	case 3:
-		return m.setExportLocations()
+		return m.setupRemoteServers()
 	case 4:
-		return m.viewConfiguration()
+		return m.configureAnalysisPreferences()
 	case 5:
+		return m.viewConfiguration()
+	case 6:
+		return m.handleBackupRestore()
+	case 7:
+		return m.resetConfiguration()
+	case 8:
 		return nil // Back to main menu
 	}
 	

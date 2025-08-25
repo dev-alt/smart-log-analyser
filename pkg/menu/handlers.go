@@ -14,8 +14,10 @@ import (
 
 	"smart-log-analyser/pkg/analyser"
 	"smart-log-analyser/pkg/charts"
+	"smart-log-analyser/pkg/config"
 	"smart-log-analyser/pkg/html"
 	"smart-log-analyser/pkg/parser"
+	"smart-log-analyser/pkg/query"
 	"smart-log-analyser/pkg/remote"
 	"smart-log-analyser/pkg/trends"
 )
@@ -548,6 +550,9 @@ func (m *Menu) setupRemoteServers() error {
 	fmt.Println("\n🔧 Remote Server Configuration")
 	fmt.Println("════════════════════════════")
 	fmt.Println()
+	fmt.Println("💡 This manages the legacy servers.json configuration.")
+	fmt.Println("   Enhanced server profiles in the new config system coming soon!")
+	fmt.Println()
 	
 	configFile := "servers.json"
 	
@@ -680,8 +685,30 @@ func (m *Menu) customReportSettings() error {
 // Configuration handlers
 
 func (m *Menu) configureAnalysisPreferences() error {
-	fmt.Println("🔧 Analysis preferences configuration would be implemented here")
-	m.pause()
+	configManager := config.NewConfigManager("config")
+	if err := configManager.Load(); err != nil {
+		return err
+	}
+	
+	current := configManager.GetConfig().Analysis
+	
+	m.clearScreen()
+	fmt.Println("⚙️  Configure Analysis Preferences")
+	fmt.Println("══════════════════════════════════")
+	fmt.Println()
+	
+	fmt.Println("Current settings:")
+	fmt.Printf("📊 Default Top IPs: %d\n", current.DefaultTopIPs)
+	fmt.Printf("📊 Default Top URLs: %d\n", current.DefaultTopURLs)
+	fmt.Printf("🕒 Default Time Range: %s\n", current.DefaultTimeRange)
+	fmt.Printf("📈 Auto Charts: %v\n", current.AutoCharts)
+	fmt.Printf("📏 Chart Width: %d\n", current.ChartWidth)
+	fmt.Printf("🎨 No Colors: %v\n", current.NoColors)
+	fmt.Printf("📁 Export Formats: %v\n", current.ExportFormats)
+	fmt.Println()
+	
+	fmt.Println("Press Enter to continue (modification coming soon)...")
+	m.scanner.Scan()
 	return nil
 }
 
@@ -692,13 +719,40 @@ func (m *Menu) setExportLocations() error {
 }
 
 func (m *Menu) viewConfiguration() error {
-	fmt.Println("📋 Current Configuration")
+	installer := config.NewInstaller("config")
+	status, err := installer.GetStatus()
+	if err != nil {
+		return err
+	}
+	
+	m.clearScreen()
+	fmt.Println("📊 Configuration Status")
 	fmt.Println("══════════════════════")
-	fmt.Println("• Export Location: ./output/")
-	fmt.Println("• Default Analysis: Standard")
-	fmt.Println("• Remote Servers: Not configured")
-	fmt.Println("• HTML Reports: Enabled")
-	m.pause()
+	fmt.Println()
+	
+	fmt.Printf("📁 Configuration Directory: %s\n", status.ConfigDir)
+	fmt.Printf("📄 Configuration File: %s\n", status.ConfigFile)
+	fmt.Printf("🔧 Initialized: %v\n", status.Initialized)
+	fmt.Printf("🎯 Presets: %d\n", status.Presets)
+	fmt.Printf("📄 Templates: %d\n", status.Templates)
+	fmt.Printf("🌐 Server Profiles: %d\n", status.Servers)
+	fmt.Println()
+	
+	if !status.Initialized {
+		fmt.Println("💡 Configuration not initialized.")
+		fmt.Print("   Would you like to initialize it now? (y/N): ")
+		response := m.getStringInput("Would you like to initialize it now? (y/N): ")
+		if strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
+			fmt.Println("🔧 Initializing configuration...")
+			if err := installer.Initialize(); err != nil {
+				return fmt.Errorf("failed to initialize configuration: %w", err)
+			}
+			fmt.Println("✅ Configuration initialized successfully!")
+		}
+	}
+	
+	fmt.Println("Press Enter to continue...")
+	m.scanner.Scan()
 	return nil
 }
 
@@ -1315,3 +1369,566 @@ func (m *Menu) getSeverityEmoji(severity string) string {
 		return "ℹ️"
 	}
 }
+
+// === Configuration Management Functions ===
+
+// handleAnalysisPresets manages analysis presets
+func (m *Menu) handleAnalysisPresets() error {
+	for {
+		m.clearScreen()
+		fmt.Println("🎯 Analysis Presets Management")
+		fmt.Println("═════════════════════════════")
+		fmt.Println()
+		
+		// Initialize config if needed
+		installer := config.NewInstaller("config")
+		status, err := installer.GetStatus()
+		if err != nil {
+			return fmt.Errorf("failed to get configuration status: %w", err)
+		}
+		
+		if !status.Initialized {
+			fmt.Println("⚠️  Configuration not initialized. Initializing now...")
+			if err := installer.Initialize(); err != nil {
+				return fmt.Errorf("failed to initialize configuration: %w", err)
+			}
+			fmt.Println("✅ Configuration initialized with built-in presets!")
+			m.pauseForEffect()
+		}
+		
+		fmt.Printf("📊 Available: %d presets, %d templates\n", status.Presets, status.Templates)
+		fmt.Println()
+		fmt.Println("Available options:")
+		fmt.Println("1. 📋 Browse Available Presets")
+		fmt.Println("2. 🚀 Use Preset for Analysis")
+		fmt.Println("3. 📂 Browse Presets by Category")
+		fmt.Println("4. ➕ Add Custom Preset (Future)")
+		fmt.Println("5. 📤 Export Presets")
+		fmt.Println("6. 📥 Import Presets")
+		fmt.Println("7. 🚪 Back to Configuration Menu")
+		fmt.Println()
+		
+		choice, err := m.getIntInput("Enter choice (1-7): ", 1, 7)
+		if err != nil {
+			return err
+		}
+		
+		switch choice {
+		case 1:
+			if err := m.browsePresets(); err != nil {
+				m.showError("Browse presets error", err)
+			}
+		case 2:
+			if err := m.usePresetForAnalysis(); err != nil {
+				m.showError("Preset analysis error", err)
+			}
+		case 3:
+			if err := m.browsePresetsByCategory(); err != nil {
+				m.showError("Browse categories error", err)
+			}
+		case 4:
+			fmt.Println("🚧 Custom preset creation coming soon!")
+			m.pauseForEffect()
+		case 5:
+			if err := m.exportPresets(); err != nil {
+				m.showError("Export presets error", err)
+			}
+		case 6:
+			if err := m.importPresets(); err != nil {
+				m.showError("Import presets error", err)
+			}
+		case 7:
+			return nil
+		}
+	}
+}
+
+// browsePresets displays all available presets
+func (m *Menu) browsePresets() error {
+	configManager := config.NewConfigManager("config")
+	if err := configManager.Load(); err != nil {
+		return err
+	}
+	
+	presets := configManager.GetConfig().Presets
+	if len(presets) == 0 {
+		fmt.Println("No presets available. Please initialize configuration first.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	m.clearScreen()
+	fmt.Printf("📊 Available Analysis Presets (%d)\n", len(presets))
+	fmt.Println("══════════════════════════════════")
+	fmt.Println()
+	
+	// Group by category
+	categories := make(map[string][]config.AnalysisPreset)
+	for _, preset := range presets {
+		categories[preset.Category] = append(categories[preset.Category], preset)
+	}
+	
+	for category, categoryPresets := range categories {
+		fmt.Printf("🏷️  %s Category\n", strings.Title(category))
+		fmt.Println("─────────────────────")
+		for i, preset := range categoryPresets {
+			fmt.Printf("%d. %s\n", i+1, preset.Name)
+			fmt.Printf("   📝 %s\n", preset.Description)
+			if preset.Query != "" {
+				query := preset.Query
+				if len(query) > 80 {
+					query = query[:77] + "..."
+				}
+				fmt.Printf("   🔍 %s\n", query)
+			}
+			fmt.Println()
+		}
+	}
+	
+	fmt.Println("Press Enter to continue...")
+	m.scanner.Scan()
+	return nil
+}
+
+// browsePresetsByCategory shows presets organized by category
+func (m *Menu) browsePresetsByCategory() error {
+	configManager := config.NewConfigManager("config")
+	if err := configManager.Load(); err != nil {
+		return err
+	}
+	
+	categories := config.GetPresetCategories()
+	
+	m.clearScreen()
+	fmt.Printf("🏷️  Preset Categories (%d)\n", len(categories))
+	fmt.Println("═════════════════════════")
+	fmt.Println()
+	
+	for i, category := range categories {
+		presets := configManager.GetPresetsByCategory(category.Name)
+		fmt.Printf("%d. %s %s (%d presets)\n", i+1, category.Icon, category.Name, len(presets))
+		fmt.Printf("   %s\n", category.Description)
+		fmt.Println()
+	}
+	
+	choice, err := m.getIntInput(fmt.Sprintf("Select category (1-%d) or 0 to go back: ", len(categories)), 0, len(categories))
+	if err != nil {
+		return err
+	}
+	
+	if choice == 0 {
+		return nil
+	}
+	
+	selectedCategory := categories[choice-1]
+	return m.showCategoryPresets(selectedCategory.Name, configManager)
+}
+
+// showCategoryPresets displays presets for a specific category
+func (m *Menu) showCategoryPresets(categoryName string, configManager *config.ConfigManager) error {
+	presets := configManager.GetPresetsByCategory(categoryName)
+	
+	m.clearScreen()
+	fmt.Printf("🏷️  %s Presets (%d)\n", strings.Title(categoryName), len(presets))
+	fmt.Println("═════════════════════════════")
+	fmt.Println()
+	
+	if len(presets) == 0 {
+		fmt.Printf("No presets available in %s category.\n", categoryName)
+		m.pauseForEffect()
+		return nil
+	}
+	
+	for i, preset := range presets {
+		fmt.Printf("%d. %s\n", i+1, preset.Name)
+		fmt.Printf("   📝 %s\n", preset.Description)
+		if preset.Query != "" {
+			query := preset.Query
+			if len(query) > 80 {
+				query = query[:77] + "..."
+			}
+			fmt.Printf("   🔍 %s\n", query)
+		}
+		fmt.Printf("   📊 %d exports, %d charts\n", len(preset.Exports), len(preset.Charts))
+		fmt.Println()
+	}
+	
+	fmt.Println("Press Enter to continue...")
+	m.scanner.Scan()
+	return nil
+}
+
+// usePresetForAnalysis allows user to select and run a preset
+func (m *Menu) usePresetForAnalysis() error {
+	configManager := config.NewConfigManager("config")
+	if err := configManager.Load(); err != nil {
+		return err
+	}
+	
+	presets := configManager.GetConfig().Presets
+	if len(presets) == 0 {
+		fmt.Println("No presets available. Please initialize configuration first.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	m.clearScreen()
+	fmt.Println("🚀 Use Preset for Analysis")
+	fmt.Println("═══════════════════════════")
+	fmt.Println()
+	
+	fmt.Println("Available presets:")
+	for i, preset := range presets {
+		fmt.Printf("%d. [%s] %s\n", i+1, preset.Category, preset.Name)
+		fmt.Printf("   📝 %s\n", preset.Description)
+	}
+	fmt.Printf("%d. 🚪 Back to presets menu\n", len(presets)+1)
+	fmt.Println()
+	
+	choice, err := m.getIntInput(fmt.Sprintf("Select preset (1-%d): ", len(presets)+1), 1, len(presets)+1)
+	if err != nil {
+		return err
+	}
+	
+	if choice == len(presets)+1 {
+		return nil
+	}
+	
+	selectedPreset := presets[choice-1]
+	
+	// Get log files first
+	logFiles, err := m.selectLogFiles()
+	if err != nil {
+		return err
+	}
+	
+	if len(logFiles) == 0 {
+		fmt.Println("❌ No log files selected.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	// Run analysis with preset
+	return m.runPresetAnalysis(selectedPreset, logFiles)
+}
+
+// runPresetAnalysis executes analysis using a specific preset
+func (m *Menu) runPresetAnalysis(preset config.AnalysisPreset, logFiles []string) error {
+	m.clearScreen()
+	fmt.Printf("🎯 Running Analysis: %s\n", preset.Name)
+	fmt.Printf("📂 Category: %s\n", preset.Category)
+	fmt.Printf("📝 Description: %s\n", preset.Description)
+	fmt.Println()
+	fmt.Printf("📂 Files: %d log files selected\n", len(logFiles))
+	fmt.Println()
+	
+	// Parse log files
+	p := parser.New()
+	var allLogs []*parser.LogEntry
+	
+	fmt.Println("📂 Processing log files...")
+	for i, logFile := range logFiles {
+		fmt.Printf("  [%d/%d] Processing: %s\n", i+1, len(logFiles), logFile)
+		
+		logs, err := p.ParseFile(logFile)
+		if err != nil {
+			fmt.Printf("    ❌ Failed to parse %s: %v\n", logFile, err)
+			continue
+		}
+		
+		fmt.Printf("    ✅ Parsed %d entries\n", len(logs))
+		allLogs = append(allLogs, logs...)
+	}
+	
+	if len(allLogs) == 0 {
+		fmt.Println("❌ No log entries found in selected files.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	fmt.Printf("\n📊 Total entries: %d\n", len(allLogs))
+	
+	// Apply preset query if available
+	if preset.Query != "" {
+		fmt.Printf("🔍 Executing preset query...\n")
+		fmt.Printf("Query: %s\n\n", preset.Query)
+		
+		// Use query system to execute the preset query
+		result, err := query.ExecuteQuery(preset.Query, allLogs)
+		if err != nil {
+			fmt.Printf("❌ Query error: %v\n", err)
+			m.pauseForEffect()
+			return nil
+		}
+		
+		// Display results
+		formattedResult, err := query.FormatResult(result, "table")
+		if err != nil {
+			fmt.Printf("❌ Formatting error: %v\n", err)
+		} else {
+			fmt.Printf("📊 Query Results:\n%s", formattedResult)
+		}
+		
+		// Handle exports based on preset configuration
+		for _, exportConfig := range preset.Exports {
+			filename := exportConfig.Filename
+			if filename == "" {
+				filename = fmt.Sprintf("output/%s.%s", preset.Name, exportConfig.Format)
+			}
+			
+			switch exportConfig.Format {
+			case "csv":
+				if err := m.exportQueryToCSV(result, filename); err != nil {
+					fmt.Printf("❌ Failed to export CSV: %v\n", err)
+				} else {
+					fmt.Printf("✅ Exported to: %s\n", filename)
+				}
+			case "json":
+				if err := m.exportQueryToJSON(result, filename); err != nil {
+					fmt.Printf("❌ Failed to export JSON: %v\n", err)
+				} else {
+					fmt.Printf("✅ Exported to: %s\n", filename)
+				}
+			}
+		}
+	} else {
+		// Fall back to standard analysis
+		fmt.Println("📊 Running standard analysis...")
+		a := analyser.New()
+		results := a.Analyse(allLogs, nil, nil)  // No time filtering
+		
+		// Display basic results
+		fmt.Printf("Total Requests: %d\n", results.TotalRequests)
+		fmt.Printf("Unique IPs: %d\n", results.UniqueIPs)
+		fmt.Printf("Date Range: %s to %s\n", 
+			results.TimeRange.Start.Format("2006-01-02 15:04:05"),
+			results.TimeRange.End.Format("2006-01-02 15:04:05"))
+	}
+	
+	fmt.Println("\n✅ Analysis completed!")
+	fmt.Println("Press Enter to continue...")
+	m.scanner.Scan()
+	return nil
+}
+
+// exportQueryToCSV exports query results to CSV format
+func (m *Menu) exportQueryToCSV(result *query.QueryResult, filename string) error {
+	// Ensure output directory exists
+	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+		return err
+	}
+	
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	
+	// Write headers
+	if err := writer.Write(result.Columns); err != nil {
+		return err
+	}
+	
+	// Write data rows
+	for _, row := range result.Rows {
+		stringRow := make([]string, len(row))
+		for i, val := range row {
+			stringRow[i] = fmt.Sprintf("%v", val)
+		}
+		if err := writer.Write(stringRow); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// exportQueryToJSON exports query results to JSON format
+func (m *Menu) exportQueryToJSON(result *query.QueryResult, filename string) error {
+	// Ensure output directory exists
+	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+		return err
+	}
+	
+	// Convert result to JSON-friendly format
+	output := map[string]interface{}{
+		"columns":   result.Columns,
+		"rows":      result.Rows,
+		"count":     result.Count,
+	}
+	
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(output)
+}
+
+// exportPresets exports presets to a file
+func (m *Menu) exportPresets() error {
+	fmt.Println("\n📤 Export Presets")
+	fmt.Println("─────────────────")
+	fmt.Print("Enter filename for export (e.g., my-presets.yaml): ")
+	filename := m.getStringInput("Enter filename: ")
+	
+	if filename == "" {
+		filename = fmt.Sprintf("presets-export-%d.yaml", time.Now().Unix())
+	}
+	
+	installer := config.NewInstaller("config")
+	if err := installer.ExportPresets(filename); err != nil {
+		return err
+	}
+	
+	fmt.Printf("✅ Presets exported to: %s\n", filename)
+	m.pauseForEffect()
+	return nil
+}
+
+// importPresets imports presets from a file
+func (m *Menu) importPresets() error {
+	fmt.Println("\n📥 Import Presets")
+	fmt.Println("─────────────────")
+	fmt.Print("Enter filename to import: ")
+	filename := m.getStringInput("Enter filename: ")
+	
+	if filename == "" {
+		fmt.Println("❌ No filename provided.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	installer := config.NewInstaller("config")
+	if err := installer.ImportPresets(filename); err != nil {
+		return err
+	}
+	
+	fmt.Printf("✅ Presets imported from: %s\n", filename)
+	m.pauseForEffect()
+	return nil
+}
+
+// handleReportTemplates manages report templates
+func (m *Menu) handleReportTemplates() error {
+	configManager := config.NewConfigManager("config")
+	if err := configManager.Load(); err != nil {
+		return err
+	}
+	
+	templates := configManager.GetConfig().Templates
+	
+	m.clearScreen()
+	fmt.Printf("📄 Report Templates Management (%d templates)\n", len(templates))
+	fmt.Println("═══════════════════════════════════════════════")
+	fmt.Println()
+	
+	if len(templates) == 0 {
+		fmt.Println("No templates available. Please initialize configuration first.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	fmt.Println("Available templates:")
+	for i, template := range templates {
+		fmt.Printf("%d. %s [%s]\n", i+1, template.Name, template.Category)
+		fmt.Printf("   📝 %s\n", template.Description)
+		fmt.Printf("   📊 %d sections\n", len(template.Sections))
+	}
+	
+	fmt.Println("\nPress Enter to continue...")
+	m.scanner.Scan()
+	return nil
+}
+
+
+// handleBackupRestore manages configuration backup and restore
+func (m *Menu) handleBackupRestore() error {
+	m.clearScreen()
+	fmt.Println("💾 Backup & Restore Configuration")
+	fmt.Println("═══════════════════════════════════")
+	fmt.Println()
+	fmt.Println("Available options:")
+	fmt.Println("1. 💾 Create Backup")
+	fmt.Println("2. 🔄 Restore from Backup")
+	fmt.Println("3. 🚪 Back to Configuration Menu")
+	fmt.Println()
+	
+	choice, err := m.getIntInput("Enter choice (1-3): ", 1, 3)
+	if err != nil {
+		return err
+	}
+	
+	installer := config.NewInstaller("config")
+	
+	switch choice {
+	case 1:
+		fmt.Println("💾 Creating backup...")
+		backupFile, err := installer.Backup()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✅ Backup created: %s\n", backupFile)
+		m.pauseForEffect()
+		
+	case 2:
+		fmt.Print("Enter backup filename to restore: ")
+		filename := m.getStringInput("Enter filename: ")
+		if filename == "" {
+			fmt.Println("❌ No filename provided.")
+			m.pauseForEffect()
+			return nil
+		}
+		
+		fmt.Printf("🔄 Restoring from: %s\n", filename)
+		if err := installer.Restore(filename); err != nil {
+			return err
+		}
+		fmt.Println("✅ Configuration restored successfully!")
+		m.pauseForEffect()
+		
+	case 3:
+		return nil
+	}
+	
+	return nil
+}
+
+// resetConfiguration resets configuration to defaults
+func (m *Menu) resetConfiguration() error {
+	m.clearScreen()
+	fmt.Println("🔄 Reset Configuration to Defaults")
+	fmt.Println("═══════════════════════════════════")
+	fmt.Println()
+	fmt.Println("⚠️  WARNING: This will remove all current configuration,")
+	fmt.Println("   presets, templates, and server profiles!")
+	fmt.Println()
+	fmt.Print("Are you sure you want to proceed? (y/N): ")
+	
+	response := m.getStringInput("Are you sure you want to proceed? (y/N): ")
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		fmt.Println("❌ Reset cancelled.")
+		m.pauseForEffect()
+		return nil
+	}
+	
+	installer := config.NewInstaller("config")
+	
+	fmt.Println("🔄 Resetting configuration...")
+	if err := installer.Reset(); err != nil {
+		return err
+	}
+	
+	fmt.Println("✅ Configuration reset to defaults successfully!")
+	m.pauseForEffect()
+	return nil
+}
+
+
+
