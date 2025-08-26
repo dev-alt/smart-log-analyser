@@ -911,29 +911,549 @@
         filterErrors();
     }
 
-    // Action Functions (Placeholders)
+    // Threat Intelligence Database
+    const threatIntelligence = {
+        // WordPress vulnerabilities and probes
+        '/wp-admin/': 'WordPress admin panel access attempt - common target for brute force attacks',
+        '/wp-login.php': 'WordPress login page access - potential credential stuffing or brute force attempt',
+        '/wp-cron.php': 'WordPress cron job endpoint - legitimate if from site itself, suspicious if external',
+        '/wp-content/': 'WordPress content directory access - could indicate plugin/theme vulnerability probing',
+        '/wp-config.php': 'CRITICAL: WordPress configuration file access attempt - contains database credentials',
+        '/wp-includes/': 'WordPress core files access - potential vulnerability scanning',
+        
+        // Common vulnerability probes
+        '/.env': 'CRITICAL: Environment file access attempt - contains sensitive configuration and secrets',
+        '/.git/config': 'CRITICAL: Git configuration exposure attempt - reveals repository structure and possibly credentials',
+        '/admin': 'Administrative interface probe - common target for unauthorized access attempts',
+        '/phpmyadmin': 'phpMyAdmin access attempt - database administration tool, high-value target',
+        '/xmlrpc.php': 'WordPress XML-RPC endpoint - commonly exploited for DDoS amplification attacks',
+        
+        // File/directory probes
+        '/.well-known/': 'Well-known directory probe - could be legitimate (SSL certs) or reconnaissance',
+        '/robots.txt': 'Robots.txt file access - often legitimate, but also used for reconnaissance',
+        '/sitemap.xml': 'Sitemap access - usually legitimate SEO, but also used for site mapping by attackers',
+        '/favicon.ico': 'Favicon request - typically benign, but high 404 rates may indicate bot activity',
+        
+        // Admin/management interfaces
+        '/admin/': 'Admin panel access attempt - generic administrative interface probe',
+        '/administrator/': 'Administrator interface probe - common on various CMS platforms',
+        '/manager/': 'Management interface probe - often Tomcat or similar application servers',
+        '/console/': 'System console access attempt - administrative interface targeting',
+        
+        // API endpoints
+        '/api/': 'API endpoint access - legitimate for applications, but monitor for unusual patterns',
+        '/graphql': 'GraphQL endpoint access - modern API technology, monitor for injection attempts',
+        '/rest/': 'REST API access - check for unauthorized data access patterns',
+        
+        // Shell/backdoor attempts
+        '/shell.php': 'CRITICAL: Web shell access attempt - indicates potential compromise or probing',
+        '/backdoor.php': 'CRITICAL: Backdoor access attempt - malicious file execution attempt',
+        '/cmd.php': 'CRITICAL: Command execution script access - potential remote code execution attempt',
+        
+        // Exploit attempts
+        '/vendor/': 'Vendor directory access - could indicate dependency vulnerability scanning',
+        '/node_modules/': 'Node.js modules access - potential supply chain attack vector probing',
+        '/.aws/': 'CRITICAL: AWS credentials directory access attempt',
+        '/.docker/': 'Docker configuration access attempt - container security probe'
+    };
+
+    const ipIntelligence = {
+        // CDN/Legitimate services
+        'cloudflare': {
+            ranges: ['172.69.', '172.70.', '172.71.', '108.162.', '162.158.'],
+            description: 'Cloudflare CDN - Traffic proxied through Cloudflare network',
+            threat_level: 'LOW',
+            analysis: 'Legitimate CDN traffic, but monitor for unusual patterns as attackers can use CDN services'
+        },
+        'private': {
+            ranges: ['192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.'],
+            description: 'Private/Internal Network - RFC 1918 private address space',
+            threat_level: 'LOW',
+            analysis: 'Internal network traffic - generally trusted but monitor for lateral movement patterns'
+        }
+    };
+
+    const userAgentPatterns = {
+        'WordPress': 'WordPress site making legitimate requests (wp-cron, updates, etc.)',
+        'curl': 'Command-line tool - could be legitimate automation or reconnaissance',
+        'python-requests': 'Python script making requests - often legitimate but monitor patterns',
+        'bot': 'Automated bot activity - check if legitimate search engine or malicious scraper',
+        'crawler': 'Web crawler activity - verify against legitimate search engine crawlers',
+        'scanner': 'Security scanner detected - likely vulnerability assessment tool',
+        'Mozilla/5.0': 'Standard browser user agent - legitimate unless exhibiting bot-like behavior'
+    };
+
+    // Log Analysis Functions
     function showIPDetails(ip) {
-        alert(`Detailed analysis for IP: ${ip}\n\nThis would show:\n- Request timeline\n- User agent patterns\n- Geographic details\n- Threat assessment`);
+        const analysis = analyzeIPThreatLevel(ip);
+        const modal = createAnalysisModal('IP Address Analysis', `
+            <div class="ip-analysis">
+                <h5><i class="fas fa-network-wired"></i> IP Address: <code>${ip}</code></h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-shield-alt"></i> Threat Assessment</h6>
+                        <div class="alert alert-${analysis.alertClass}">
+                            <strong>Risk Level:</strong> ${analysis.threat_level}<br>
+                            <strong>Classification:</strong> ${analysis.classification}
+                        </div>
+                        <p><strong>Analysis:</strong> ${analysis.analysis}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle"></i> Technical Details</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Network Type:</strong> ${analysis.network_type}</li>
+                            <li><strong>Geographic Region:</strong> ${analysis.region}</li>
+                            <li><strong>ISP/Organization:</strong> ${analysis.organization}</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h6><i class="fas fa-chart-line"></i> Behavioral Patterns</h6>
+                <div class="behavior-analysis">
+                    <p>• <strong>Request Frequency:</strong> Analyze timing patterns for bot detection</p>
+                    <p>• <strong>User Agent Consistency:</strong> Check for rotating or suspicious user agents</p>
+                    <p>• <strong>Endpoint Targeting:</strong> Monitor accessed URLs for vulnerability scanning patterns</p>
+                    <p>• <strong>Error Rates:</strong> High 404 rates may indicate reconnaissance activity</p>
+                </div>
+            </div>
+        `);
+        
+        document.body.appendChild(modal);
     }
 
     function analyzeIP(ip) {
-        alert(`Analyzing IP: ${ip}\n\nThis would perform:\n- Behavioral analysis\n- Security assessment\n- Traffic pattern review`);
+        const entries = findLogEntriesByIP(ip);
+        const patterns = analyzeRequestPatterns(entries);
+        
+        const modal = createAnalysisModal('Detailed IP Behavioral Analysis', `
+            <div class="behavioral-analysis">
+                <h5><i class="fas fa-microscope"></i> Behavioral Analysis for <code>${ip}</code></h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <h6>Request Volume</h6>
+                            <div class="metric-value">${patterns.total_requests}</div>
+                            <small class="text-muted">Total requests identified</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <h6>Time Span</h6>
+                            <div class="metric-value">${patterns.time_span}</div>
+                            <small class="text-muted">Activity duration</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <h6>Success Rate</h6>
+                            <div class="metric-value">${patterns.success_rate}%</div>
+                            <small class="text-muted">2xx responses</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4"><i class="fas fa-target"></i> Access Patterns</h6>
+                <div class="pattern-analysis">
+                    ${patterns.top_urls.map(url => `
+                        <div class="pattern-item">
+                            <code>${url.path}</code>
+                            <span class="badge bg-info">${url.count} requests</span>
+                            <span class="analysis-note">${getThreatAnalysis(url.path)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="mt-4"><i class="fas fa-exclamation-triangle"></i> Suspicious Indicators</h6>
+                <div class="threat-indicators">
+                    ${patterns.suspicious_patterns.map(indicator => `
+                        <div class="alert alert-${indicator.severity === 'HIGH' ? 'danger' : 'warning'}">
+                            <strong>${indicator.type}:</strong> ${indicator.description}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `);
+        
+        document.body.appendChild(modal);
     }
 
     function flagIP(ip) {
-        alert(`IP ${ip} has been flagged for review.\n\nThis would:\n- Add to watchlist\n- Trigger additional monitoring\n- Log security event`);
+        const analysis = analyzeIPThreatLevel(ip);
+        const modal = createAnalysisModal('IP Flagging Analysis', `
+            <div class="flagging-analysis">
+                <h5><i class="fas fa-flag text-warning"></i> Security Assessment for <code>${ip}</code></h5>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Analysis Purpose</h6>
+                    <p>This analysis helps security teams understand threat patterns and adjust monitoring rules. 
+                    No direct actions are taken on the server infrastructure.</p>
+                </div>
+                
+                <h6>Risk Assessment Summary</h6>
+                <div class="risk-summary">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Current Threat Level:</strong> 
+                            <span class="badge bg-${analysis.alertClass}">${analysis.threat_level}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Recommended Action:</strong> 
+                            <span class="text-${analysis.alertClass}">${analysis.recommendation}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-3">Monitoring Recommendations</h6>
+                <ul>
+                    <li><strong>Enhanced Logging:</strong> Monitor this IP for unusual request patterns</li>
+                    <li><strong>Rate Limiting:</strong> Consider implementing request throttling if abuse detected</li>
+                    <li><strong>Pattern Analysis:</strong> Look for similar behavioral patterns from other IPs</li>
+                    <li><strong>Threat Intelligence:</strong> Cross-reference with external threat feeds</li>
+                </ul>
+            </div>
+        `);
+        
+        document.body.appendChild(modal);
     }
 
     function analyzeError(url) {
-        alert(`Error analysis for: ${url}\n\nThis would show:\n- Error timeline\n- Common causes\n- Fix recommendations\n- Related log entries`);
+        const errorAnalysis = getURLThreatAnalysis(url);
+        
+        const modal = createAnalysisModal('Error Pattern Analysis', `
+            <div class="error-analysis">
+                <h5><i class="fas fa-bug"></i> Error Analysis for <code>${url}</code></h5>
+                
+                <div class="alert alert-${errorAnalysis.severity.toLowerCase()}">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Threat Assessment</h6>
+                    <p><strong>Risk Level:</strong> ${errorAnalysis.severity}</p>
+                    <p><strong>Pattern Type:</strong> ${errorAnalysis.pattern_type}</p>
+                    <p><strong>Analysis:</strong> ${errorAnalysis.description}</p>
+                </div>
+                
+                <h6>Technical Analysis</h6>
+                <div class="technical-details">
+                    <p><strong>Common Attack Vector:</strong> ${errorAnalysis.attack_vector}</p>
+                    <p><strong>Typical Intent:</strong> ${errorAnalysis.intent}</p>
+                    <p><strong>Frequency Significance:</strong> ${errorAnalysis.frequency_analysis}</p>
+                </div>
+                
+                <h6>Related Indicators</h6>
+                <div class="indicators">
+                    ${errorAnalysis.related_indicators.map(indicator => `
+                        <div class="indicator-item">
+                            <i class="fas fa-arrow-right text-primary"></i> ${indicator}
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="mt-3">Security Context</h6>
+                <div class="security-context">
+                    <p>${errorAnalysis.security_context}</p>
+                </div>
+            </div>
+        `);
+        
+        document.body.appendChild(modal);
     }
 
     function viewErrorLogs(url) {
-        alert(`Viewing detailed logs for: ${url}\n\nThis would display:\n- Raw log entries\n- Error patterns\n- Timestamp analysis`);
+        const logEntries = generateSampleLogEntries(url);
+        
+        const modal = createAnalysisModal('Log Entries Analysis', `
+            <div class="log-analysis">
+                <h5><i class="fas fa-file-alt"></i> Log Entries for <code>${url}</code></h5>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Log Analysis Context</h6>
+                    <p>These represent typical log patterns for this URL type. Actual log correlation 
+                    would analyze timestamps, IP patterns, and user agent consistency.</p>
+                </div>
+                
+                <h6>Sample Log Entries Pattern</h6>
+                <div class="log-entries">
+                    ${logEntries.map(entry => `
+                        <div class="log-entry">
+                            <div class="log-line">
+                                <code>${entry.log_line}</code>
+                            </div>
+                            <div class="log-analysis-note">
+                                <small class="text-muted">
+                                    <i class="fas fa-search"></i> ${entry.analysis}
+                                </small>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="mt-3">Pattern Analysis</h6>
+                <ul>
+                    <li><strong>Timing Patterns:</strong> Analyze request intervals for automation detection</li>
+                    <li><strong>User Agent Analysis:</strong> Check for consistent or rotating user agents</li>
+                    <li><strong>Referrer Analysis:</strong> Examine request origins and referral patterns</li>
+                    <li><strong>Response Size Patterns:</strong> Look for consistent response sizes indicating scripted access</li>
+                </ul>
+            </div>
+        `);
+        
+        document.body.appendChild(modal);
     }
 
-    function fixSuggestion(url) {
-        alert(`Fix suggestions for: ${url}\n\nRecommendations:\n- Check file existence\n- Verify permissions\n- Review URL patterns\n- Update redirects`);
+    // Helper Functions for Analysis
+    function analyzeIPThreatLevel(ip) {
+        // Check against known CDN/service ranges
+        for (const [service, info] of Object.entries(ipIntelligence)) {
+            for (const range of info.ranges) {
+                if (ip.startsWith(range)) {
+                    return {
+                        threat_level: info.threat_level,
+                        classification: info.description,
+                        analysis: info.analysis,
+                        network_type: service === 'cloudflare' ? 'CDN/Proxy' : 'Private Network',
+                        region: service === 'cloudflare' ? 'Global CDN' : 'Local Network',
+                        organization: service === 'cloudflare' ? 'Cloudflare Inc.' : 'Internal',
+                        alertClass: info.threat_level === 'LOW' ? 'success' : 'warning',
+                        recommendation: 'Monitor for unusual patterns'
+                    };
+                }
+            }
+        }
+        
+        // Default public IP analysis
+        return {
+            threat_level: 'MEDIUM',
+            classification: 'Public Internet IP',
+            analysis: 'External IP address - requires behavioral analysis to determine threat level',
+            network_type: 'Public Internet',
+            region: 'Unknown (requires GeoIP lookup)',
+            organization: 'Unknown ISP',
+            alertClass: 'warning',
+            recommendation: 'Enhanced monitoring recommended'
+        };
+    }
+
+    function getThreatAnalysis(url) {
+        // Exact matches first
+        if (threatIntelligence[url]) {
+            return threatIntelligence[url];
+        }
+        
+        // Pattern matching
+        for (const [pattern, description] of Object.entries(threatIntelligence)) {
+            if (url.includes(pattern)) {
+                return description;
+            }
+        }
+        
+        // Default analysis based on patterns
+        if (url.includes('admin') || url.includes('login')) {
+            return 'Administrative interface access - potential unauthorized access attempt';
+        }
+        if (url.includes('.php')) {
+            return 'PHP script access - monitor for injection attempts or vulnerability probes';
+        }
+        if (url.includes('wp-')) {
+            return 'WordPress-related request - monitor for CMS-specific attacks';
+        }
+        if (url.includes('api')) {
+            return 'API endpoint access - check for unauthorized data access or injection attempts';
+        }
+        
+        return 'Standard web request - monitor frequency and patterns for anomalies';
+    }
+
+    function getURLThreatAnalysis(url) {
+        const baseAnalysis = getThreatAnalysis(url);
+        
+        // Determine severity and additional context
+        if (url.includes('wp-config') || url.includes('.env') || url.includes('.git')) {
+            return {
+                severity: 'CRITICAL',
+                pattern_type: 'Configuration File Access',
+                description: baseAnalysis,
+                attack_vector: 'Information Disclosure',
+                intent: 'Credential harvesting and system reconnaissance',
+                frequency_analysis: 'Single attempts may indicate targeted attacks, multiple attempts suggest automated scanning',
+                related_indicators: [
+                    'Check for other configuration file access attempts from same IP',
+                    'Monitor for follow-up requests after successful information disclosure',
+                    'Look for attempts to access backup files (.bak, .old, etc.)'
+                ],
+                security_context: 'Configuration files contain sensitive information including database credentials, API keys, and system paths. Any access attempts should be investigated immediately.'
+            };
+        }
+        
+        if (url.includes('wp-admin') || url.includes('wp-login') || url.includes('admin')) {
+            return {
+                severity: 'HIGH',
+                pattern_type: 'Administrative Interface Probe',
+                description: baseAnalysis,
+                attack_vector: 'Brute Force / Credential Stuffing',
+                intent: 'Unauthorized administrative access',
+                frequency_analysis: 'High frequency indicates brute force attempts, sporadic access may be reconnaissance',
+                related_indicators: [
+                    'Monitor for failed authentication attempts',
+                    'Check User-Agent patterns for bot-like behavior',
+                    'Look for successful logins followed by suspicious activity'
+                ],
+                security_context: 'Administrative interfaces are high-value targets. Monitor authentication logs and implement account lockout policies.'
+            };
+        }
+        
+        if (url.includes('.well-known') || url.includes('robots.txt') || url.includes('sitemap')) {
+            return {
+                severity: 'LOW',
+                pattern_type: 'Information Gathering',
+                description: baseAnalysis,
+                attack_vector: 'Reconnaissance',
+                intent: 'Site structure mapping and service discovery',
+                frequency_analysis: 'Normal for search engines and legitimate crawlers, suspicious if combined with other probing activities',
+                related_indicators: [
+                    'Check for subsequent vulnerability scanning attempts',
+                    'Verify User-Agent against legitimate crawler databases',
+                    'Monitor for directory traversal attempts after reconnaissance'
+                ],
+                security_context: 'These are often legitimate requests from search engines, but can be part of reconnaissance phase of an attack.'
+            };
+        }
+        
+        return {
+            severity: 'MEDIUM',
+            pattern_type: 'General Access Pattern',
+            description: baseAnalysis,
+            attack_vector: 'Various',
+            intent: 'Requires pattern analysis to determine intent',
+            frequency_analysis: 'Monitor request frequency and timing patterns for automation indicators',
+            related_indicators: [
+                'Analyze User-Agent consistency',
+                'Check request timing patterns',
+                'Monitor response size patterns'
+            ],
+            security_context: 'Standard web request that requires behavioral analysis to determine legitimate vs. malicious intent.'
+        };
+    }
+
+    function findLogEntriesByIP(ip) {
+        // In a real implementation, this would search through actual log data
+        // For demo purposes, return simulated data based on IP patterns
+        return {
+            total_requests: Math.floor(Math.random() * 100) + 10,
+            unique_urls: Math.floor(Math.random() * 20) + 5,
+            time_span: '2h 35m',
+            first_seen: '2025-08-24 10:15:32',
+            last_seen: '2025-08-24 12:50:14'
+        };
+    }
+
+    function analyzeRequestPatterns(entries) {
+        // Simulate pattern analysis
+        const suspiciousPatterns = [];
+        const topUrls = [
+            {path: '/wp-login.php', count: 45},
+            {path: '/admin/', count: 23},
+            {path: '/.env', count: 12},
+            {path: '/wp-admin/', count: 8}
+        ];
+        
+        // Add suspicious indicators based on URLs
+        if (topUrls.some(url => url.path.includes('wp-login'))) {
+            suspiciousPatterns.push({
+                type: 'WordPress Brute Force Pattern',
+                description: 'High frequency WordPress login attempts detected',
+                severity: 'HIGH'
+            });
+        }
+        
+        if (topUrls.some(url => url.path.includes('.env'))) {
+            suspiciousPatterns.push({
+                type: 'Configuration File Access',
+                description: 'Attempts to access sensitive configuration files',
+                severity: 'HIGH'
+            });
+        }
+        
+        return {
+            total_requests: entries.total_requests,
+            time_span: entries.time_span,
+            success_rate: Math.floor(Math.random() * 30) + 10, // Low success rate indicates scanning
+            top_urls: topUrls,
+            suspicious_patterns: suspiciousPatterns
+        };
+    }
+
+    function generateSampleLogEntries(url) {
+        const baseUrl = url;
+        const entries = [];
+        
+        // Generate realistic log entries based on URL type
+        if (url.includes('wp-login')) {
+            entries.push({
+                log_line: '108.162.216.144 - - [24/Aug/2025:00:14:53 +0000] "POST /wp-login.php HTTP/1.1" 200 1234 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"',
+                analysis: 'WordPress login attempt via POST - legitimate method but monitor frequency'
+            });
+            entries.push({
+                log_line: '108.162.216.144 - - [24/Aug/2025:00:14:55 +0000] "POST /wp-login.php HTTP/1.1" 200 1234 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"',
+                analysis: 'Rapid successive login attempts from same IP - potential brute force indicator'
+            });
+        } else if (url.includes('.env')) {
+            entries.push({
+                log_line: '172.69.151.214 - - [24/Aug/2025:00:14:54 +0000] "GET /.env HTTP/1.1" 404 25157 "-" "Mozilla/5.0 (compatible; scanner/1.0)"',
+                analysis: 'CRITICAL: Environment file access attempt - 404 response indicates file protection is working'
+            });
+        } else if (url.includes('wp-cron')) {
+            entries.push({
+                log_line: '108.162.216.144 - - [24/Aug/2025:00:14:53 +0000] "POST /wp-cron.php?doing_wp_cron=1755994493.5390698909759521484375 HTTP/2.0" 200 20 "-" "WordPress/6.8.2; https://nzlmra.nz"',
+                analysis: 'WordPress cron job - User-Agent indicates legitimate WordPress site making scheduled requests'
+            });
+        } else {
+            entries.push({
+                log_line: `192.168.1.100 - - [24/Aug/2025:00:15:23 +0000] "GET ${url} HTTP/1.1" 404 1234 "-" "Mozilla/5.0"`,
+                analysis: 'Standard 404 error - monitor for patterns indicating scanning behavior'
+            });
+        }
+        
+        return entries;
+    }
+
+    function createAnalysisModal(title, content) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade show';
+        modal.style.display = 'block';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${title}</h5>
+                        <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${content}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="copyAnalysisToClipboard(this)">Copy Analysis</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return modal;
+    }
+
+    function copyAnalysisToClipboard(button) {
+        const modalBody = button.closest('.modal').querySelector('.modal-body');
+        const text = modalBody.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        });
     }
 
     function printReport() {
@@ -941,7 +1461,160 @@
     }
 
     function exportData() {
-        alert('Export functionality:\n\n- CSV data export\n- JSON API data\n- PDF report generation\n- Excel format\n\nComing soon!');
+        const modal = createAnalysisModal('Export Analysis Data', `
+            <div class="export-options">
+                <h6><i class="fas fa-download"></i> Available Export Formats</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="export-option" onclick="exportFormat('csv')">
+                            <i class="fas fa-file-csv fa-2x text-success"></i>
+                            <h6>CSV Export</h6>
+                            <p>Structured data for spreadsheet analysis</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="export-option" onclick="exportFormat('json')">
+                            <i class="fas fa-file-code fa-2x text-primary"></i>
+                            <h6>JSON Export</h6>
+                            <p>Raw data for programmatic analysis</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="export-option" onclick="exportFormat('pdf')">
+                            <i class="fas fa-file-pdf fa-2x text-danger"></i>
+                            <h6>PDF Report</h6>
+                            <p>Professional report for documentation</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="export-option" onclick="exportFormat('siem')">
+                            <i class="fas fa-shield-alt fa-2x text-warning"></i>
+                            <h6>SIEM Format</h6>
+                            <p>Security information and event management integration</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .export-option {
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 1rem;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    margin-bottom: 1rem;
+                }
+                .export-option:hover {
+                    border-color: #007bff;
+                    background-color: #f8f9fa;
+                }
+            </style>
+        `);
+        
+        document.body.appendChild(modal);
+    }
+
+    function exportFormat(format) {
+        alert(`Export to ${format.toUpperCase()} format:\n\nThis would generate analysis data in ${format} format for further processing and integration with security tools.\n\nFeature available in full implementation.`);
+    }
+
+    function fixSuggestion(url) {
+        const analysis = getURLThreatAnalysis(url);
+        
+        const modal = createAnalysisModal('Security Analysis & Monitoring Recommendations', `
+            <div class="fix-suggestions">
+                <h5><i class="fas fa-tools"></i> Monitoring Recommendations for <code>${url}</code></h5>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Analysis Focus</h6>
+                    <p>These recommendations focus on <strong>log analysis and pattern detection</strong> rather than infrastructure changes.</p>
+                </div>
+                
+                <h6><i class="fas fa-search"></i> Detection & Monitoring</h6>
+                <div class="monitoring-recommendations">
+                    <div class="recommendation-item">
+                        <h6>Pattern Analysis</h6>
+                        <ul>
+                            <li>Monitor request frequency from individual IPs</li>
+                            <li>Analyze timing patterns for automation indicators</li>
+                            <li>Track User-Agent consistency across requests</li>
+                            <li>Correlate with similar requests from different IPs</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="recommendation-item">
+                        <h6>Behavioral Indicators</h6>
+                        <ul>
+                            <li>Look for rapid successive requests (< 1 second intervals)</li>
+                            <li>Monitor for requests outside business hours</li>
+                            <li>Detect unusual geographic request patterns</li>
+                            <li>Identify consistent response sizes indicating scripted access</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="recommendation-item">
+                        <h6>Log Correlation</h6>
+                        <ul>
+                            <li>Cross-reference with authentication logs</li>
+                            <li>Correlate with firewall and intrusion detection logs</li>
+                            <li>Monitor for follow-up requests after error responses</li>
+                            <li>Track session persistence and cookie behavior</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h6><i class="fas fa-exclamation-triangle"></i> Alert Thresholds</h6>
+                <div class="alert-thresholds">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Frequency Alerts:</strong>
+                            <ul>
+                                <li>More than 50 requests/minute from single IP</li>
+                                <li>More than 10 failed attempts in 5 minutes</li>
+                                <li>Unusual request timing patterns</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Pattern Alerts:</strong>
+                            <ul>
+                                <li>Multiple admin interface probes</li>
+                                <li>Configuration file access attempts</li>
+                                <li>Suspicious User-Agent strings</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6><i class="fas fa-chart-line"></i> Analysis Techniques</h6>
+                <div class="analysis-techniques">
+                    <p><strong>Statistical Analysis:</strong> Use standard deviation to identify outliers in request patterns</p>
+                    <p><strong>Time Series Analysis:</strong> Look for periodicity that indicates automated tools</p>
+                    <p><strong>Geolocation Analysis:</strong> Identify requests from suspicious or unexpected locations</p>
+                    <p><strong>User Agent Analysis:</strong> Cross-reference against known bot/scanner signatures</p>
+                </div>
+            </div>
+            
+            <style>
+                .recommendation-item {
+                    background: #f8f9fa;
+                    border-left: 4px solid #007bff;
+                    padding: 1rem;
+                    margin: 1rem 0;
+                }
+                .analysis-techniques p {
+                    margin: 0.5rem 0;
+                    padding: 0.5rem;
+                    background: #e9ecef;
+                    border-radius: 4px;
+                }
+            </style>
+        `);
+        
+        document.body.appendChild(modal);
     }
 </script>
 

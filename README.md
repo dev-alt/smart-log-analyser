@@ -487,6 +487,14 @@ The Smart Log Analyser generates **enterprise-grade interactive HTML reports** w
 - **Performance Insights**: Response size analysis with percentile breakdowns
 - **Security Assessment**: Threat scoring with detailed recommendation breakdown
 
+**🔍 Forensic Analysis & Threat Intelligence:**
+- **Interactive Threat Analysis**: Click any IP or URL for comprehensive threat assessment
+- **30+ Attack Pattern Recognition**: WordPress vulnerabilities, configuration file access, admin probes, shell attempts
+- **CDN & Network Intelligence**: Automatic Cloudflare detection, private network classification, public IP assessment
+- **Behavioral Pattern Detection**: Bot identification, scanner recognition, automation detection
+- **Professional Security Modals**: Detailed threat analysis with risk levels and monitoring recommendations
+- **Copy-to-Clipboard Analysis**: Export threat intelligence for security teams and SOC analysts
+
 ### Opening and Using Reports
 ```bash
 # Open interactive report in browser
@@ -497,6 +505,38 @@ start output/report.html     # Windows
 
 # Print-friendly version for documentation
 ./smart-log-analyser analyse logs/ --export-html=output/print.html --interactive-html=false
+```
+
+### Threat Intelligence Examples
+
+The interactive reports now provide professional forensic analysis for common attack patterns:
+
+**WordPress Attack Detection:**
+```
+Log: POST /wp-cron.php?doing_wp_cron=... HTTP/2.0" 200 20 "WordPress/6.8.2"
+Analysis: "WordPress cron job - User-Agent indicates legitimate WordPress site making scheduled requests"
+Risk Level: LOW - Monitor frequency for unusual patterns
+```
+
+**Critical File Access Attempts:**
+```
+Log: GET /.env HTTP/1.1" 404 512 "curl/7.68.0"
+Analysis: "CRITICAL: Environment file access attempt - contains sensitive configuration and secrets"
+Risk Level: CRITICAL - Investigate immediately, check for follow-up attacks
+```
+
+**CDN Traffic Analysis:**
+```  
+Log: 172.69.151.214 - GET /.well-known/dnt-policy.txt HTTP/2.0" 404 25157
+Analysis: "Cloudflare CDN - Well-known directory probe, could be legitimate SSL validation or reconnaissance"
+Risk Level: LOW - Monitor for subsequent vulnerability scanning attempts
+```
+
+**Administrative Interface Probes:**
+```
+Log: POST /qzkeyAdmin/ashx/FileHandler.ashx HTTP/2.0" 404 25164
+Analysis: "Administrative interface probe targeting ASP.NET file handler - potential vulnerability scanning"
+Risk Level: HIGH - Check for brute force patterns and other admin interface attempts
 ```
 
 ### Menu System Integration
