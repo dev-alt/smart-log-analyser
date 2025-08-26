@@ -91,7 +91,7 @@ Smart Log Analyser now features an **interactive menu system** that launches whe
 - **🌐 Download & Analyse Remote Logs**: Manage remote server connections and downloads
 - **⚡ Performance Analysis & Profiling**: Comprehensive performance analysis with bottleneck detection and optimization recommendations
 - **🔐 Enhanced Security Analysis**: Enterprise-grade threat detection, behavioral analysis, and security risk assessment
-- **📈 Generate HTML Report**: Create interactive reports with custom settings
+- **📈 Generate Interactive HTML Reports**: Create professional tabbed reports with drill-down capabilities, real-time filtering, and enterprise-grade visualizations
 - **🔧 Configuration & Setup**: Complete configuration management with presets, templates, and preferences
 - **📚 Help & Documentation**: Built-in help and guidance
 - **🚪 Exit**: Clean exit from the application
@@ -399,47 +399,119 @@ The trend analysis is seamlessly integrated into the interactive menu system:
 - **Progressive Disclosure**: Visualization options revealed after analysis completion
 - **Professional Display**: Consistent formatting with emojis and structured output
 
-## HTML Reports 📊
+## Interactive HTML Reports 📊
 
-The Smart Log Analyser can generate beautiful, interactive HTML reports with embedded charts and visualizations.
+The Smart Log Analyser generates **enterprise-grade interactive HTML reports** with tabbed interfaces, drill-down capabilities, and professional visualizations that rival commercial log analysis solutions.
 
-### Features
-- **Interactive Charts**: Powered by Chart.js with responsive design
-- **Professional Layout**: Clean, modern interface with Bootstrap CSS
-- **Comprehensive Analysis**: All analytics displayed with visual charts
-- **Mobile Friendly**: Responsive design works on all devices
-- **Print Ready**: Optimized styling for PDF generation
+### Report Types
 
-### Chart Types
-- **Traffic Analysis**: Pie charts for human vs bot traffic
-- **Status Code Distribution**: Doughnut charts for response codes
-- **Hourly Traffic Patterns**: Line charts showing traffic over time
-- **Response Size Analysis**: Bar charts for response time proxies
-- **Geographic Distribution**: Bar charts for traffic by region
-- **File Type Analysis**: Stacked bar charts for content types
+**🎯 Interactive Reports (Default)**
+- **Tabbed Interface**: 6 comprehensive analysis tabs with seamless navigation
+- **Drill-down Tables**: Click any table row to expand detailed information
+- **Real-time Filtering**: Dynamic filtering and search without page refresh
+- **Professional UI**: Bootstrap-powered responsive design with modern styling
+- **Chart.js Integration**: Interactive charts with hover details and animations
+
+**📄 Standard Reports**
+- **Static Layout**: Traditional single-page report format
+- **Embedded Charts**: Chart.js visualizations with static configuration
+- **Print-Optimized**: Clean layout optimized for PDF generation
+- **Lightweight**: Smaller file size for basic reporting needs
+
+### Interactive Features
+
+**📑 Analysis Tabs:**
+- **Overview**: Traffic patterns and top URLs with expandable details
+- **Traffic Analysis**: IP filtering, geographic breakdown, and traffic categorization
+- **Error Analysis**: Status code filtering, error details, and fix suggestions
+- **Performance**: Response size distribution and performance metrics
+- **Security**: Security scoring, threat assessment, and recommendations  
+- **Geographic**: Regional traffic analysis and file type distribution
+
+**🔍 Interactive Elements:**
+- **Clickable Tables**: Every row expands with comprehensive details
+- **Smart Filtering**: Filter IPs by type (Public, Private, CDN), errors by status code
+- **Search Functionality**: Real-time URL and data searching
+- **Action Buttons**: Analyze IPs, view error logs, get fix suggestions
+- **Status Badges**: Color-coded indicators for quick status identification
 
 ### HTML Report Generation
+
+**Interactive Reports (Recommended):**
 ```bash
-# Basic HTML report
+# Interactive report with tabbed interface (default)
 ./smart-log-analyser analyse logs/ --export-html=output/report.html
 
-# Custom title and detailed analysis
-./smart-log-analyser analyse logs/ --export-html=output/report.html --html-title="Production Analysis" --details
+# Interactive report with custom title
+./smart-log-analyser analyse logs/ --export-html=output/report.html --html-title="Production Server Analysis"
 
-# Multiple formats with HTML report
-./smart-log-analyser analyse logs/ --export-html=output/report.html --export-json=output/data.json --details
+# Interactive report with all analytics
+./smart-log-analyser analyse logs/ --export-html=output/report.html --details --trend-analysis
 ```
 
-### Opening HTML Reports
+**Standard Reports:**
 ```bash
-# Open in default browser (Linux)
-xdg-open output/report.html
+# Standard static report
+./smart-log-analyser analyse logs/ --export-html=output/report.html --interactive-html=false
 
-# Open in default browser (macOS)
-open output/report.html
+# Standard report optimized for printing
+./smart-log-analyser analyse logs/ --export-html=output/report.html --interactive-html=false --html-title="Print Report"
+```
 
-# Open in default browser (Windows)
-start output/report.html
+**Advanced Options:**
+```bash
+# Multiple formats with interactive HTML
+./smart-log-analyser analyse logs/ --export-html=output/interactive.html --export-json=output/data.json --export-csv=output/summary.csv
+
+# Comprehensive analysis with interactive reporting
+./smart-log-analyser analyse logs/ --export-html=output/comprehensive.html --details --ascii-charts --trend-analysis
+```
+
+### Interactive Report Features
+
+**🎨 Visual Elements:**
+- **Professional Charts**: Interactive pie, line, bar, and doughnut charts
+- **Color-coded Security**: Risk-based visual indicators (Excellent/Good/Fair/Poor/Critical)
+- **Responsive Design**: Optimized for desktop, tablet, and mobile viewing
+- **Modern Styling**: Professional Bootstrap theme with custom enhancements
+
+**⚡ Real-time Interactions:**
+- **Dynamic Filtering**: Filter by IP type, status codes, request counts
+- **Expandable Details**: Click rows for comprehensive information breakdown
+- **Search Integration**: Real-time searching across URLs and data points
+- **Tab Navigation**: Seamless switching between analysis categories
+
+**📊 Enhanced Analysis:**
+- **Error Breakdown**: Click error URLs to see detailed status code analysis
+- **IP Intelligence**: Geographic location, traffic type, and behavioral analysis
+- **Performance Insights**: Response size analysis with percentile breakdowns
+- **Security Assessment**: Threat scoring with detailed recommendation breakdown
+
+### Opening and Using Reports
+```bash
+# Open interactive report in browser
+./smart-log-analyser analyse logs/ --export-html=output/report.html
+xdg-open output/report.html  # Linux
+open output/report.html      # macOS  
+start output/report.html     # Windows
+
+# Print-friendly version for documentation
+./smart-log-analyser analyse logs/ --export-html=output/print.html --interactive-html=false
+```
+
+### Menu System Integration
+
+When using the interactive menu system, HTML report generation includes user-friendly options:
+
+```
+📊 HTML Report Options:
+1. Interactive Report (recommended) - Tabbed interface with drill-down capabilities
+2. Standard Report - Simple static report
+
+Choose report type (1-2): 1
+Report title (press Enter for default): Production Analysis
+✅ Interactive HTML report saved to: output/report_20250826_133045.html
+Open report in browser? (y/N): y
 ```
 
 ## Dual Operation Modes

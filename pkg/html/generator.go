@@ -99,7 +99,8 @@ type ErrorRow struct {
 
 // Generator handles HTML report generation
 type Generator struct {
-	template *template.Template
+	template            *template.Template
+	interactiveTemplate *template.Template
 }
 
 // NewGenerator creates a new HTML report generator
@@ -110,16 +111,36 @@ func NewGenerator() (*Generator, error) {
 			return a + b
 		},
 		"formatBytes": formatBytes,
+		"replace": func(old, new, s string) string {
+			return strings.ReplaceAll(s, old, new)
+		},
+		"split": func(sep, s string) []string {
+			return strings.Split(s, sep)
+		},
+		"atoi": func(s string) int {
+			i, _ := strconv.Atoi(strings.TrimSuffix(s, "/100"))
+			return i
+		},
+		"printf": func(format string, args ...interface{}) string {
+			return fmt.Sprintf(format, args...)
+		},
 	}
 
-	// Parse embedded template
+	// Parse standard template
 	tmpl, err := template.New("report.html").Funcs(funcMap).ParseFS(templateFS, "templates/report.html")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
+		return nil, fmt.Errorf("failed to parse standard template: %w", err)
+	}
+
+	// Parse interactive template
+	interactiveTmpl, err := template.New("interactive_report.html").Funcs(funcMap).ParseFS(templateFS, "templates/interactive_report.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse interactive template: %w", err)
 	}
 
 	return &Generator{
-		template: tmpl,
+		template:            tmpl,
+		interactiveTemplate: interactiveTmpl,
 	}, nil
 }
 
@@ -143,6 +164,31 @@ func (g *Generator) GenerateReport(results *analyser.Results, outputPath string,
 	// Execute template
 	if err := g.template.Execute(file, reportData); err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	return nil
+}
+
+// GenerateInteractiveReport creates an interactive HTML report with tabbed interface
+func (g *Generator) GenerateInteractiveReport(results *analyser.Results, outputPath string, title string) error {
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Transform analysis results to report data
+	reportData := g.transformResults(results, title)
+
+	// Create output file
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer file.Close()
+
+	// Execute interactive template
+	if err := g.interactiveTemplate.Execute(file, reportData); err != nil {
+		return fmt.Errorf("failed to execute interactive template: %w", err)
 	}
 
 	return nil

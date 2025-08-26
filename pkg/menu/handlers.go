@@ -299,12 +299,23 @@ func (m *Menu) handleExport(results *analyser.Results) error {
 	return nil
 }
 
-// exportHTML exports HTML report
+// exportHTML exports interactive HTML report
 func (m *Menu) exportHTML(results *analyser.Results, timestamp string) error {
 	title := m.getStringInput("Report title (press Enter for default): ")
 	if title == "" {
 		title = "Log Analysis Report"
 	}
+	
+	// Ask user for report type
+	fmt.Println("\n📊 HTML Report Options:")
+	fmt.Println("1. Interactive Report (recommended) - Tabbed interface with drill-down capabilities")
+	fmt.Println("2. Standard Report - Simple static report")
+	
+	choice, err := m.getIntInput("Choose report type (1-2): ", 1, 2)
+	if err != nil {
+		return err
+	}
+	interactive := choice == 1
 	
 	filename := fmt.Sprintf("output/report_%s.html", timestamp)
 	
@@ -313,12 +324,22 @@ func (m *Menu) exportHTML(results *analyser.Results, timestamp string) error {
 		return err
 	}
 	
-	err = generator.GenerateReport(results, filename, title)
-	if err != nil {
-		return err
+	var reportErr error
+	if interactive {
+		reportErr = generator.GenerateInteractiveReport(results, filename, title)
+	} else {
+		reportErr = generator.GenerateReport(results, filename, title)
 	}
 	
-	fmt.Printf("✅ HTML report saved to: %s\n", filename)
+	if reportErr != nil {
+		return reportErr
+	}
+	
+	reportType := "standard"
+	if interactive {
+		reportType = "interactive"
+	}
+	fmt.Printf("✅ %s HTML report saved to: %s\n", strings.Title(reportType), filename)
 	
 	if m.confirmYesNo("Open report in browser") {
 		// Try to open in default browser

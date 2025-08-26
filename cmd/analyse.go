@@ -29,6 +29,7 @@ var (
 	exportCSV     string
 	exportHTML    string
 	htmlTitle     string
+	interactiveHTML bool
 	showDetails   bool
 	asciiCharts   bool
 	chartWidth    int
@@ -46,6 +47,23 @@ var analyseCmd = &cobra.Command{
 	Short: "Analyse Nginx access logs",
 	Long:  `Parse and analyse Nginx access logs to provide statistical insights.
 Accepts multiple log files to analyse together.
+
+Interactive HTML Reports:
+Generate rich, interactive HTML reports with tabbed interfaces and drill-down capabilities:
+
+  # Interactive report (default)
+  --export-html report.html --html-title "My Analysis"
+  
+  # Standard static report
+  --export-html report.html --interactive-html=false
+  
+Interactive reports include:
+- Tabbed interface (Overview, Traffic, Errors, Performance, Security, Geographic)
+- Clickable tables with detailed drill-down information
+- Real-time filtering and search capabilities
+- Professional charts and visualizations
+- Error analysis with status code breakdowns
+- IP analysis with geographic and type information
 
 Advanced Query Language (SLAQ):
 You can use SQL-like queries to filter and analyze your logs. Examples:
@@ -187,10 +205,14 @@ Available operators: =, !=, <, >, <=, >=, LIKE, CONTAINS, STARTS_WITH, ENDS_WITH
 			if title == "" {
 				title = "Log Analysis Report"
 			}
-			if err := exportToHTML(results, exportHTML, title); err != nil {
+			if err := exportToHTML(results, exportHTML, title, interactiveHTML); err != nil {
 				fmt.Printf("❌ Failed to export HTML: %v\n", err)
 			} else {
-				fmt.Printf("🌐 Exported HTML report to: %s\n", exportHTML)
+				reportType := "standard"
+				if interactiveHTML {
+					reportType = "interactive"
+				}
+				fmt.Printf("🌐 Exported %s HTML report to: %s\n", reportType, exportHTML)
 			}
 		}
 		
@@ -205,8 +227,9 @@ func init() {
 	analyseCmd.Flags().IntVar(&topURLs, "top-urls", 10, "Number of top URLs to show")
 	analyseCmd.Flags().StringVar(&exportJSON, "export-json", "", "Export detailed results to JSON file")
 	analyseCmd.Flags().StringVar(&exportCSV, "export-csv", "", "Export detailed results to CSV file")
-	analyseCmd.Flags().StringVar(&exportHTML, "export-html", "", "Export interactive HTML report")
+	analyseCmd.Flags().StringVar(&exportHTML, "export-html", "", "Export HTML report")
 	analyseCmd.Flags().StringVar(&htmlTitle, "html-title", "", "Custom title for HTML report")
+	analyseCmd.Flags().BoolVar(&interactiveHTML, "interactive-html", true, "Generate interactive HTML report with tabs and drill-down (default: true)")
 	analyseCmd.Flags().BoolVar(&showDetails, "details", false, "Show detailed breakdown (individual status codes, etc.)")
 	analyseCmd.Flags().BoolVar(&asciiCharts, "ascii-charts", false, "Display ASCII charts with analysis results")
 	analyseCmd.Flags().IntVar(&chartWidth, "chart-width", 80, "Width of ASCII charts (default: 80)")
@@ -778,12 +801,15 @@ func getThreatEmoji(threatLevel string) string {
 }
 
 // exportToHTML generates an interactive HTML report
-func exportToHTML(results *analyser.Results, filename string, title string) error {
+func exportToHTML(results *analyser.Results, filename string, title string, interactive bool) error {
 	generator, err := html.NewGenerator()
 	if err != nil {
 		return fmt.Errorf("failed to create HTML generator: %w", err)
 	}
 	
+	if interactive {
+		return generator.GenerateInteractiveReport(results, filename, title)
+	}
 	return generator.GenerateReport(results, filename, title)
 }
 

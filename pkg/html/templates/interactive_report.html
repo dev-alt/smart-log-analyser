@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Smart Log Analyser Interactive Report</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+        }
+        
+        .report-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .metric-label {
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+        }
+        
+        .chart-container canvas {
+            max-width: 100% !important;
+            max-height: 300px !important;
+            width: auto !important;
+            height: auto !important;
+        }
+        
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #495057;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--secondary-color);
+            font-weight: 500;
+            padding: 1rem 1.5rem;
+            margin-right: 0.5rem;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: var(--primary-gradient);
+            color: white;
+        }
+        
+        .tab-content {
+            background: white;
+            border-radius: 0 10px 10px 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .security-excellent { color: var(--success-color); }
+        .security-good { color: var(--info-color); }
+        .security-fair { color: var(--warning-color); }
+        .security-poor { color: var(--danger-color); }
+        .security-critical { color: #721c24; }
+        
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #495057;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        .clickable-row {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .clickable-row:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        
+        .details-panel {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .badge-large {
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+        }
+        
+        .filter-controls {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            margin: 0.1rem;
+        }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .chart-container { break-inside: avoid; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body style="background-color: #f8f9fa;">
+
+<!-- Header -->
+<div class="report-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-1">📊 {{.Title}}</h1>
+                <p class="mb-0 opacity-75">Smart Log Analyser Interactive Report</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <p class="mb-1">Generated: {{.GeneratedAt}}</p>
+                <p class="mb-0">Analysis Period: {{.DateRange}}</p>
+                <div class="mt-2">
+                    <button class="btn btn-light btn-sm me-2" onclick="printReport()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button class="btn btn-light btn-sm" onclick="exportData()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Quick Overview Metrics -->
+    <h2 class="section-title">📋 Quick Overview</h2>
+    <div class="row">
+        <div class="col-md-3">
+            <div class="metric-card text-center" onclick="showTab('overview-tab')">
+                <div class="metric-value">{{.TotalRequests}}</div>
+                <div class="metric-label">Total Requests</div>
+                <small class="text-muted">Click for details</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card text-center" onclick="showTab('traffic-tab')">
+                <div class="metric-value">{{.UniqueIPs}}</div>
+                <div class="metric-label">Unique IPs</div>
+                <small class="text-muted">Click for analysis</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card text-center" onclick="showTab('performance-tab')">
+                <div class="metric-value">{{.DataTransferred}}</div>
+                <div class="metric-label">Data Transferred</div>
+                <small class="text-muted">Click for breakdown</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card text-center" onclick="showTab('security-tab')">
+                <div class="metric-value {{.SecurityClass}}">{{.SecurityScore}}</div>
+                <div class="metric-label">Security Score</div>
+                <small class="text-muted">Click for threats</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Tabbed Interface -->
+    <div class="mt-4">
+        <ul class="nav nav-tabs" id="analysisTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                    <i class="fas fa-chart-bar"></i> Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="traffic-tab" data-bs-toggle="tab" data-bs-target="#traffic" type="button" role="tab">
+                    <i class="fas fa-network-wired"></i> Traffic Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="errors-tab" data-bs-toggle="tab" data-bs-target="#errors" type="button" role="tab">
+                    <i class="fas fa-exclamation-triangle"></i> Error Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="performance-tab" data-bs-toggle="tab" data-bs-target="#performance" type="button" role="tab">
+                    <i class="fas fa-tachometer-alt"></i> Performance
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">
+                    <i class="fas fa-shield-alt"></i> Security
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="geographic-tab" data-bs-toggle="tab" data-bs-target="#geographic" type="button" role="tab">
+                    <i class="fas fa-globe"></i> Geographic
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="analysisTabContent">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <h3><i class="fas fa-chart-bar text-primary"></i> Traffic Overview</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h4 class="chart-title">Human vs Bot Traffic</h4>
+                            <canvas id="trafficChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h4 class="chart-title">Hourly Traffic Pattern</h4>
+                            <canvas id="hourlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 class="mt-4"><i class="fas fa-list"></i> Top URLs</h4>
+                <div class="table-container">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Rank</th>
+                                <th>URL</th>
+                                <th>Requests</th>
+                                <th>Percentage</th>
+                                <th>Average Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range $index, $url := .TopURLs}}
+                            <tr class="clickable-row" onclick="toggleDetails('url-{{$index}}')">
+                                <td>{{add $index 1}}</td>
+                                <td><code>{{$url.URL}}</code></td>
+                                <td>{{$url.Count}}</td>
+                                <td><span class="badge bg-primary">{{$url.Percentage}}%</span></td>
+                                <td>{{$url.AverageSize}}</td>
+                            </tr>
+                            <tr id="url-{{$index}}" class="details-panel" style="display: none;">
+                                <td colspan="5">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>URL Details:</strong><br>
+                                            <small class="text-muted">Full path: <code>{{$url.URL}}</code></small><br>
+                                            <small class="text-muted">Total requests: {{$url.Count}}</small><br>
+                                            <small class="text-muted">Percentage of traffic: {{$url.Percentage}}%</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Performance:</strong><br>
+                                            <small class="text-muted">Average size: {{$url.AverageSize}}</small><br>
+                                            <small class="text-muted">Total transfer: {{$url.TotalTransfer}}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Traffic Analysis Tab -->
+            <div class="tab-pane fade" id="traffic" role="tabpanel">
+                <h3><i class="fas fa-network-wired text-primary"></i> Traffic Analysis</h3>
+                
+                <div class="filter-controls">
+                    <h5>Filters:</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <select class="form-select" id="ipTypeFilter" onchange="filterIPs()">
+                                <option value="">All IP Types</option>
+                                <option value="Public">Public IPs</option>
+                                <option value="Private">Private IPs</option>
+                                <option value="CDN">CDN IPs</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" class="form-control" placeholder="Min requests" id="minRequestsFilter" onchange="filterIPs()">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-secondary" onclick="resetFilters()">Reset Filters</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h4><i class="fas fa-server"></i> Top IP Addresses</h4>
+                <div class="table-container">
+                    <table class="table table-hover mb-0" id="ipsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Rank</th>
+                                <th>IP Address</th>
+                                <th>Requests</th>
+                                <th>Percentage</th>
+                                <th>Location</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range $index, $ip := .TopIPs}}
+                            <tr class="clickable-row ip-row" data-ip-type="{{$ip.Type}}" data-requests="{{$ip.Count}}" onclick="toggleDetails('ip-{{$index}}')">
+                                <td>{{add $index 1}}</td>
+                                <td><code>{{$ip.IP}}</code></td>
+                                <td>{{$ip.Count}}</td>
+                                <td><span class="badge bg-info">{{$ip.Percentage}}%</span></td>
+                                <td>{{$ip.Location}}</td>
+                                <td><span class="badge bg-{{$ip.TypeClass}}">{{$ip.Type}}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showIPDetails('{{$ip.IP}}')">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr id="ip-{{$index}}" class="details-panel" style="display: none;">
+                                <td colspan="7">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>IP Information:</strong><br>
+                                            <small class="text-muted">IP: <code>{{$ip.IP}}</code></small><br>
+                                            <small class="text-muted">Type: {{$ip.Type}}</small><br>
+                                            <small class="text-muted">Location: {{$ip.Location}}</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Traffic Statistics:</strong><br>
+                                            <small class="text-muted">Total requests: {{$ip.Count}}</small><br>
+                                            <small class="text-muted">Percentage: {{$ip.Percentage}}%</small><br>
+                                            <small class="text-muted">Classification: {{$ip.Type}}</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Actions:</strong><br>
+                                            <button class="btn btn-sm btn-info me-2" onclick="analyzeIP('{{$ip.IP}}')">
+                                                <i class="fas fa-chart-line"></i> Analyze
+                                            </button>
+                                            <button class="btn btn-sm btn-warning" onclick="flagIP('{{$ip.IP}}')">
+                                                <i class="fas fa-flag"></i> Flag
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Error Analysis Tab -->
+            <div class="tab-pane fade" id="errors" role="tabpanel">
+                <h3><i class="fas fa-exclamation-triangle text-danger"></i> Error Analysis</h3>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h4 class="chart-title">Status Code Distribution</h4>
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <h5>Error Summary</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <div class="metric-value text-warning" id="totalErrors">{{len .ErrorURLs}}</div>
+                                        <div class="metric-label">Error URLs</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <div class="metric-value text-danger" id="errorRate">0.0%</div>
+                                        <div class="metric-label">Error Rate</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-controls">
+                    <h5>Error Filters:</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <select class="form-select" id="statusCodeFilter" onchange="filterErrors()">
+                                <option value="">All Status Codes</option>
+                                <option value="400">400 - Bad Request</option>
+                                <option value="404">404 - Not Found</option>
+                                <option value="500">500 - Server Error</option>
+                                <option value="499">499 - Client Closed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" class="form-control" placeholder="Min error count" id="minErrorsFilter" onchange="filterErrors()">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" placeholder="Search URL" id="urlSearchFilter" onchange="filterErrors()">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-secondary" onclick="resetErrorFilters()">Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                {{if .ErrorURLs}}
+                <h4><i class="fas fa-bug"></i> Error Details</h4>
+                <div class="table-container">
+                    <table class="table table-hover mb-0" id="errorsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>URL</th>
+                                <th>Error Count</th>
+                                <th>Status Codes</th>
+                                <th>Error Rate</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range $index, $error := .ErrorURLs}}
+                            <tr class="clickable-row error-row" data-url="{{$error.URL}}" data-count="{{$error.ErrorCount}}" onclick="toggleDetails('error-{{$index}}')">
+                                <td><code>{{$error.URL}}</code></td>
+                                <td><span class="badge bg-danger">{{$error.ErrorCount}}</span></td>
+                                <td>
+                                    {{$statusCodes := $error.StatusCodes}}
+                                    {{range $code := (split $statusCodes "/")}}
+                                        <span class="status-badge bg-danger">{{$code}}</span>
+                                    {{end}}
+                                </td>
+                                <td><span class="badge badge-large bg-warning">{{$error.ErrorRate}}%</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info" onclick="analyzeError('{{$error.URL}}')">
+                                        <i class="fas fa-search-plus"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr id="error-{{$index}}" class="details-panel" style="display: none;">
+                                <td colspan="5">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Error Details:</strong><br>
+                                            <small class="text-muted">URL: <code>{{$error.URL}}</code></small><br>
+                                            <small class="text-muted">Total errors: {{$error.ErrorCount}}</small><br>
+                                            <small class="text-muted">Error rate: {{$error.ErrorRate}}%</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Status Codes:</strong><br>
+                                            <small class="text-muted">Codes: {{$error.StatusCodes}}</small><br>
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-primary me-2" onclick="viewErrorLogs('{{$error.URL}}')">
+                                                    <i class="fas fa-file-alt"></i> View Logs
+                                                </button>
+                                                <button class="btn btn-sm btn-success" onclick="fixSuggestion('{{$error.URL}}')">
+                                                    <i class="fas fa-tools"></i> Fix Suggestion
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="alert alert-success" role="alert">
+                    <i class="fas fa-check-circle"></i> <strong>Great!</strong> No significant errors detected in your logs.
+                </div>
+                {{end}}
+            </div>
+
+            <!-- Performance Tab -->
+            <div class="tab-pane fade" id="performance" role="tabpanel">
+                <h3><i class="fas fa-tachometer-alt text-success"></i> Performance Analysis</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h4 class="chart-title">Response Size Distribution</h4>
+                            <canvas id="responseSizeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <h5>Performance Metrics</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">P50 Size</small>
+                                    <div class="h5 text-info">{{printf "%.1f KB" .P50Size}}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">P95 Size</small>
+                                    <div class="h5 text-warning">{{printf "%.1f KB" .P95Size}}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">P99 Size</small>
+                                    <div class="h5 text-danger">{{printf "%.1f KB" .P99Size}}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Average Size</small>
+                                    <div class="h5 text-primary">{{printf "%.1f KB" .AvgSize}}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Performance Insights:</strong> 
+                    Based on response sizes and request patterns, your server appears to be performing well. 
+                    Consider caching for frequently requested resources.
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div class="tab-pane fade" id="security" role="tabpanel">
+                <h3><i class="fas fa-shield-alt text-primary"></i> Security Analysis</h3>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="metric-card text-center">
+                            <div class="metric-value {{.SecurityClass}}">{{.SecurityScore}}</div>
+                            <div class="metric-label">Security Score</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card text-center">
+                            <div class="metric-value text-warning">{{.TotalThreats}}</div>
+                            <div class="metric-label">Threats Detected</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card text-center">
+                            <div class="metric-value text-danger">{{.SuspiciousIPs}}</div>
+                            <div class="metric-label">Suspicious IPs</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-{{if lt (printf "%s" .SecurityScore | atoi) 70}}danger{{else if lt (printf "%s" .SecurityScore | atoi) 85}}warning{{else}}success{{end}}">
+                    <i class="fas fa-{{if lt (printf "%s" .SecurityScore | atoi) 70}}exclamation-triangle{{else if lt (printf "%s" .SecurityScore | atoi) 85}}info-circle{{else}}check-circle{{end}}"></i> 
+                    <strong>Security Status:</strong> 
+                    {{if lt (printf "%s" .SecurityScore | atoi) 70}}
+                        High risk detected. Multiple security issues need immediate attention.
+                    {{else if lt (printf "%s" .SecurityScore | atoi) 85}}
+                        Moderate security concerns. Review recommended actions.
+                    {{else}}
+                        Good security posture. Continue monitoring for threats.
+                    {{end}}
+                </div>
+
+                <h4><i class="fas fa-user-secret"></i> Security Recommendations</h4>
+                <div class="list-group">
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Monitor Failed Login Attempts</h6>
+                            <span class="badge bg-warning">Medium Priority</span>
+                        </div>
+                        <p class="mb-1">Review 401/403 errors for potential brute force attacks.</p>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Secure Sensitive Files</h6>
+                            <span class="badge bg-danger">High Priority</span>
+                        </div>
+                        <p class="mb-1">Block access to configuration files like .env, .git/config.</p>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Rate Limiting</h6>
+                            <span class="badge bg-info">Low Priority</span>
+                        </div>
+                        <p class="mb-1">Implement rate limiting to prevent abuse from high-traffic IPs.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic Tab -->
+            <div class="tab-pane fade" id="geographic" role="tabpanel">
+                <h3><i class="fas fa-globe text-success"></i> Geographic Analysis</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h4 class="chart-title">Traffic by Region</h4>
+                            <canvas id="geoChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h4 class="chart-title">File Type Distribution</h4>
+                            <canvas id="fileTypeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-map-marker-alt"></i> 
+                    <strong>Geographic Insights:</strong> 
+                    Traffic distribution shows {{if gt (len .GeoLabels) 2}}diverse{{else}}concentrated{{end}} geographic patterns. 
+                    Monitor for unusual geographic spikes that might indicate attacks.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center mt-5 mb-4 text-muted">
+        <p>Generated by Smart Log Analyser v{{.Version}} • Report ID: {{.ReportID}}</p>
+        <p class="small">This interactive report contains analysis of {{.TotalRequests}} log entries</p>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Chart and Interactive JavaScript -->
+<script>
+    // Wait for DOM and Chart.js to load
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js failed to load');
+            return;
+        }
+        
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+        
+        initializeCharts();
+        initializeInteractivity();
+    });
+
+    function initializeCharts() {
+        // Traffic Chart
+        const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+        new Chart(trafficCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Human Traffic', 'Bot Traffic'],
+                datasets: [{
+                    data: [{{.HumanTraffic}}, {{.BotTraffic}}],
+                    backgroundColor: ['#28a745', '#ffc107'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // Hourly Chart
+        const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+        new Chart(hourlyCtx, {
+            type: 'line',
+            data: {
+                labels: [{{range .HourlyLabels}}"{{.}}",{{end}}],
+                datasets: [{
+                    label: 'Requests',
+                    data: [{{range .HourlyData}}{{.}},{{end}}],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Status Code Chart
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'pie',
+            data: {
+                labels: [{{range .StatusLabels}}"{{.}}",{{end}}],
+                datasets: [{
+                    data: [{{range .StatusData}}{{.}},{{end}}],
+                    backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // Response Size Chart
+        const responseSizeCtx = document.getElementById('responseSizeChart').getContext('2d');
+        new Chart(responseSizeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['P50', 'P95', 'P99', 'Average'],
+                datasets: [{
+                    label: 'Response Size (KB)',
+                    data: [{{.P50Size}}, {{.P95Size}}, {{.P99Size}}, {{.AvgSize}}],
+                    backgroundColor: ['#17a2b8', '#ffc107', '#fd7e14', '#6f42c1'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Geographic Chart
+        const geoCtx = document.getElementById('geoChart').getContext('2d');
+        new Chart(geoCtx, {
+            type: 'bar',
+            data: {
+                labels: [{{range .GeoLabels}}"{{.}}",{{end}}],
+                datasets: [{
+                    label: 'Requests',
+                    data: [{{range .GeoData}}{{.}},{{end}}],
+                    backgroundColor: '#667eea',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // File Type Chart
+        const fileTypeCtx = document.getElementById('fileTypeChart').getContext('2d');
+        new Chart(fileTypeCtx, {
+            type: 'horizontalBar',
+            data: {
+                labels: [{{range .FileTypeLabels}}"{{.}}",{{end}}],
+                datasets: [{
+                    label: 'Requests',
+                    data: [{{range .FileTypeData}}{{.}},{{end}}],
+                    backgroundColor: [
+                        '#e74c3c', '#3498db', '#f39c12', 
+                        '#2ecc71', '#9b59b6', '#1abc9c'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function initializeInteractivity() {
+        // Calculate and display error rate
+        const totalRequests = {{.TotalRequests | replace "," ""}};
+        const errorURLs = {{len .ErrorURLs}};
+        const errorRate = errorURLs > 0 ? ((errorURLs * 100) / totalRequests).toFixed(2) : '0.0';
+        document.getElementById('errorRate').textContent = errorRate + '%';
+    }
+
+    // Interactive Functions
+    function showTab(tabId) {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            const tabTrigger = new bootstrap.Tab(tab);
+            tabTrigger.show();
+        }
+    }
+
+    function toggleDetails(elementId) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.style.display = element.style.display === 'none' ? 'table-row' : 'none';
+        }
+    }
+
+    function filterIPs() {
+        const typeFilter = document.getElementById('ipTypeFilter').value;
+        const minRequests = document.getElementById('minRequestsFilter').value;
+        const rows = document.querySelectorAll('.ip-row');
+        
+        rows.forEach(row => {
+            const ipType = row.dataset.ipType;
+            const requests = parseInt(row.dataset.requests);
+            
+            const typeMatch = !typeFilter || ipType === typeFilter;
+            const requestsMatch = !minRequests || requests >= parseInt(minRequests);
+            
+            row.style.display = (typeMatch && requestsMatch) ? 'table-row' : 'none';
+        });
+    }
+
+    function filterErrors() {
+        const statusFilter = document.getElementById('statusCodeFilter').value;
+        const minErrors = document.getElementById('minErrorsFilter').value;
+        const urlSearch = document.getElementById('urlSearchFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('.error-row');
+        
+        rows.forEach(row => {
+            const url = row.dataset.url.toLowerCase();
+            const count = parseInt(row.dataset.count);
+            const statusCodes = row.cells[2].textContent;
+            
+            const statusMatch = !statusFilter || statusCodes.includes(statusFilter);
+            const countMatch = !minErrors || count >= parseInt(minErrors);
+            const urlMatch = !urlSearch || url.includes(urlSearch);
+            
+            row.style.display = (statusMatch && countMatch && urlMatch) ? 'table-row' : 'none';
+        });
+    }
+
+    function resetFilters() {
+        document.getElementById('ipTypeFilter').value = '';
+        document.getElementById('minRequestsFilter').value = '';
+        filterIPs();
+    }
+
+    function resetErrorFilters() {
+        document.getElementById('statusCodeFilter').value = '';
+        document.getElementById('minErrorsFilter').value = '';
+        document.getElementById('urlSearchFilter').value = '';
+        filterErrors();
+    }
+
+    // Action Functions (Placeholders)
+    function showIPDetails(ip) {
+        alert(`Detailed analysis for IP: ${ip}\n\nThis would show:\n- Request timeline\n- User agent patterns\n- Geographic details\n- Threat assessment`);
+    }
+
+    function analyzeIP(ip) {
+        alert(`Analyzing IP: ${ip}\n\nThis would perform:\n- Behavioral analysis\n- Security assessment\n- Traffic pattern review`);
+    }
+
+    function flagIP(ip) {
+        alert(`IP ${ip} has been flagged for review.\n\nThis would:\n- Add to watchlist\n- Trigger additional monitoring\n- Log security event`);
+    }
+
+    function analyzeError(url) {
+        alert(`Error analysis for: ${url}\n\nThis would show:\n- Error timeline\n- Common causes\n- Fix recommendations\n- Related log entries`);
+    }
+
+    function viewErrorLogs(url) {
+        alert(`Viewing detailed logs for: ${url}\n\nThis would display:\n- Raw log entries\n- Error patterns\n- Timestamp analysis`);
+    }
+
+    function fixSuggestion(url) {
+        alert(`Fix suggestions for: ${url}\n\nRecommendations:\n- Check file existence\n- Verify permissions\n- Review URL patterns\n- Update redirects`);
+    }
+
+    function printReport() {
+        window.print();
+    }
+
+    function exportData() {
+        alert('Export functionality:\n\n- CSV data export\n- JSON API data\n- PDF report generation\n- Excel format\n\nComing soon!');
+    }
+</script>
+
+</body>
+</html>
