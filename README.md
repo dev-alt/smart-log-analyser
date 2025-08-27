@@ -44,6 +44,7 @@ Smart Log Analyser is designed to help system administrators and developers gain
 - [x] **Configuration management and presets** (12 built-in analysis presets, 5 report templates, user preferences)
 - [x] **Performance Analysis & Profiling** (Comprehensive performance metrics, bottleneck detection, optimization recommendations)
 - [x] **Enhanced Security Analysis** (Enterprise-grade threat detection, ML-based anomaly detection, comprehensive security scoring)
+- [x] **IPC Server for Dashboard Integration** (Cross-platform Named Pipes/Unix Sockets server for C# Avalonia dashboard integration)
 
 ## Installation
 
@@ -587,6 +588,91 @@ Smart Log Analyser supports both **interactive menu mode** and **traditional CLI
 
 Both modes provide access to the same powerful analysis features, just with different user interfaces optimized for different use cases.
 
+## IPC Server & Dashboard Integration 🔗
+
+Smart Log Analyser includes a cross-platform **IPC (Inter-Process Communication) server** designed for integration with external dashboards, particularly **C# Avalonia applications**.
+
+### Key Features
+
+- **🌐 Cross-Platform Communication**: Automatically uses Named Pipes on Windows, Unix Domain Sockets on Linux/macOS
+- **📡 JSON Protocol**: Simple request/response format for easy integration
+- **🔄 Real-Time Operations**: Full access to all analysis features via IPC
+- **⚡ Multi-Client Support**: Handle concurrent connections from multiple dashboard instances
+- **🛡️ Local Security**: Communication restricted to local machine only
+
+### Starting the IPC Server
+
+```bash
+# Start IPC server for dashboard integration
+./smart-log-analyser server
+
+# Server will display:
+🚀 Starting Smart Log Analyser IPC Server...
+✅ IPC Server is running
+📊 Ready to accept dashboard connections
+🔧 Supported actions: analyze, query, listPresets, runPreset, getConfig, updateConfig, getStatus, shutdown
+⚡ Use Ctrl+C to shutdown
+```
+
+### C# Client Integration
+
+Complete **C# client library** included for Avalonia dashboard integration:
+
+**📁 Location**: `examples/csharp/SmartLogAnalyserClient.cs`
+
+**🔧 Features**:
+- Automatic platform detection (Named Pipes/Unix Sockets)
+- Async/await support for all operations
+- Strongly-typed data models
+- Connection management and error handling
+- Full analysis feature access
+
+**💡 Quick Integration**:
+```csharp
+using var client = new SmartLogAnalyserClient();
+await client.ConnectAsync();
+
+// Analyze logs with full configuration
+var result = await client.AnalyzeAsync("access.log", new AnalysisOptions
+{
+    EnableSecurity = true,
+    EnablePerformance = true,
+    GenerateHtml = true,
+    Interactive = true
+});
+
+// Execute custom queries
+var queryResult = await client.QueryAsync("access.log", 
+    "SELECT ip, COUNT(*) FROM logs WHERE status_code >= 400 GROUP BY ip");
+
+// Use analysis presets
+var presets = await client.ListPresetsAsync();
+var presetResult = await client.RunPresetAsync("access.log", "security_overview");
+```
+
+### Available IPC Operations
+
+| Action | Description | Use Case |
+|--------|-------------|----------|
+| `analyze` | Full log analysis with all features | Dashboard main analysis |
+| `query` | Execute SLAQ queries | Custom reporting queries |
+| `listPresets` | Get available analysis presets | Preset selection UI |
+| `runPreset` | Execute specific preset | Quick analysis workflows |
+| `getConfig` | Retrieve current configuration | Settings synchronization |
+| `updateConfig` | Update system configuration | Settings management |
+| `getStatus` | Server status and statistics | Connection monitoring |
+| `shutdown` | Graceful server shutdown | Clean dashboard exit |
+
+### Example Usage Scenarios
+
+**🎯 Dashboard Analytics**: Real-time log analysis with interactive charts
+**📊 Custom Reporting**: Execute SLAQ queries for specialized reports  
+**⚙️ Preset Management**: Browse and execute 12 built-in analysis presets
+**🔧 Configuration Sync**: Manage analysis settings from dashboard UI
+**📈 Status Monitoring**: Track server status and connection health
+
+The IPC system enables **enterprise-grade dashboard integration** while maintaining the powerful analysis capabilities of Smart Log Analyser through a simple, reliable communication protocol.
+
 ## Configuration Management & Presets 🎯
 
 Smart Log Analyser includes a comprehensive configuration management system with built-in analysis presets and report templates.
@@ -869,6 +955,31 @@ Accepts one or more log files for analysis. When multiple files are provided, th
 **Options**:
 - `--since`: Start time for analysis (format: "YYYY-MM-DD HH:MM:SS")
 - `--until`: End time for analysis (format: "YYYY-MM-DD HH:MM:SS")
+
+### `server` command
+
+**Usage**: `./smart-log-analyser server`
+
+Starts the IPC server for integration with external dashboards and applications. The server automatically uses:
+- **Named Pipes** on Windows (`\\.\pipe\SmartLogAnalyser`)
+- **Unix Domain Sockets** on Linux/macOS (`/tmp/smart-log-analyser.sock`)
+
+**Features**:
+- Cross-platform communication for C# Avalonia dashboards
+- JSON-based request/response protocol
+- Support for all analysis operations (analyze, query, presets, configuration)
+- Graceful shutdown with Ctrl+C or shutdown command
+- Multi-client support with concurrent request handling
+
+**Supported IPC Actions**:
+- `analyze` - Perform comprehensive log analysis
+- `query` - Execute SLAQ queries on log files  
+- `listPresets` - Retrieve available analysis presets
+- `runPreset` - Execute specific analysis preset
+- `getConfig` - Get current configuration
+- `updateConfig` - Update system configuration
+- `getStatus` - Get server status and client count
+- `shutdown` - Gracefully shutdown server
 - `--top-ips`: Number of top IP addresses to display (default: 10)
 - `--top-urls`: Number of top URLs to display (default: 10)
 - `--details`: Show detailed breakdown (individual status codes, error URLs, large requests)
